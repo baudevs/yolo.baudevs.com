@@ -23,6 +23,7 @@ working effectively with LLM developers while maintaining complete project histo
 	rootCmd.AddCommand(commands.FeatureCmd())
 	rootCmd.AddCommand(commands.StatusCmd())
 	rootCmd.AddCommand(commands.PromptCmd())
+	rootCmd.AddCommand(commands.GraphCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
