@@ -1,0 +1,3 @@
+# YOLO Methodology Prompts
+standard_documentation: |
+  awesome! now document everything according to our yolo methodology in yolo folder adding the epics, tasks and the relationships between all of them, update the README @WISHES.md STRATEGY and HISTORY and CHANGELOG  as we do in the YOLO methodology. Remember: we don't delete anything or lines, we just mark as deprecated, added, implemented, not relevant, anything that changes, so we can keep a complete history of the evolution of our project. CHANGELOG.md and README.md maintain standard development practices, like SemVer.
