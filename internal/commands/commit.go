@@ -12,70 +12,100 @@ import (
 
 var CommitCmd = &cobra.Command{
 	Use:   "commit",
-	Short: "Create a commit with AI-assisted message generation",
-	Long: `Create a git commit with an AI-generated conventional commit message.
-The command will analyze changes, generate a commit message using the configured AI provider,
-and update project documentation automatically.`,
+	Short: "🤖 Save your changes with AI help!",
+	Long: `✨ Let's save your amazing work with style! 
+
+This magical command helps you:
+1. 🔍 Look at what you've changed
+2. 🤖 Ask AI to write a perfect description
+3. 📦 Package everything up nicely
+4. 📝 Update all the important docs
+5. ✨ Keep your project history beautiful
+
+No more worrying about:
+❌ "What should I write in the commit message?"
+❌ "Am I following the right format?"
+❌ "Did I forget to update something?"
+
+Our AI friend will:
+🎯 Look at your changes
+🎨 Write a clear description
+📚 Follow best practices
+🔄 Keep everything in sync
+
+Perfect for:
+👩‍💼 Product updates
+👨‍💻 Code changes
+📝 Documentation
+🎨 Design tweaks
+🐛 Bug fixes
+
+Just run 'yolo commit' and we'll handle the rest!`,
 	RunE: runCommit,
 }
 
 func runCommit(cmd *cobra.Command, args []string) error {
-	fmt.Println("🔍 Analyzing changes...")
+	fmt.Println("🔍 Looking at your amazing changes...")
 	
 	// Get git status
 	changes, err := getGitChanges()
 	if err != nil {
-		return fmt.Errorf("failed to get git changes: %w", err)
+		return fmt.Errorf("❌ Oops! Couldn't see your changes: %w", err)
 	}
 
 	if changes == "" {
-		fmt.Println("✨ No changes to commit!")
+		fmt.Println("✨ Nothing to save yet - make some changes first!")
 		return nil
 	}
 
 	// Initialize AI provider
+	fmt.Println("🤖 Waking up our AI friend...")
 	ai, err := initAIProvider()
 	if err != nil {
 		return handleAIError(err)
 	}
 
 	// Generate commit message
-	fmt.Println("🤖 Generating commit message...")
+	fmt.Println("🎨 Creating the perfect description...")
 	message, err := ai.GenerateCommitMessage(changes)
 	if err != nil {
 		return handleCommitError(err)
 	}
 
 	// Stage changes
-	fmt.Println("📦 Staging changes...")
+	fmt.Println("📦 Packaging up your changes...")
 	if err := stageChanges(); err != nil {
-		return fmt.Errorf("failed to stage changes: %w", err)
+		return fmt.Errorf("❌ Oops! Couldn't package your changes: %w", err)
 	}
 
 	// Create commit
-	fmt.Println("💾 Creating commit...")
+	fmt.Println("💾 Saving your work...")
 	if err := createCommit(message); err != nil {
-		return fmt.Errorf("failed to create commit: %w", err)
+		return fmt.Errorf("❌ Oops! Couldn't save your changes: %w", err)
 	}
 
 	// Update YOLO documentation
-	fmt.Println("📝 Updating documentation...")
+	fmt.Println("📝 Updating the project story...")
 	if err := updateDocs(message); err != nil {
-		return fmt.Errorf("failed to update documentation: %w", err)
+		return fmt.Errorf("❌ Oops! Couldn't update the docs: %w", err)
 	}
 
 	// Stage documentation changes
 	if err := stageChanges(); err != nil {
-		return fmt.Errorf("failed to stage documentation: %w", err)
+		return fmt.Errorf("❌ Oops! Couldn't package the doc updates: %w", err)
 	}
 
 	// Create documentation commit
 	docMessage := fmt.Sprintf("docs: update YOLO documentation\n\n%s", message)
 	if err := createCommit(docMessage); err != nil {
-		return fmt.Errorf("failed to commit documentation: %w", err)
+		return fmt.Errorf("❌ Oops! Couldn't save the doc updates: %w", err)
 	}
 
-	fmt.Println("✅ Commit created successfully!")
+	fmt.Println("\n🎉 All done! Your changes are safely saved!")
+	fmt.Println("\n💡 What's next?")
+	fmt.Println("1. Make more amazing changes")
+	fmt.Println("2. Run 'yolo status' to see how things are going")
+	fmt.Println("3. Check 'yolo graph' to see your progress!")
 	return nil
 }
 
@@ -158,34 +188,35 @@ func updateDocs(message string) error {
 }
 
 func handleAIError(err error) error {
-	fmt.Println("❌ AI provider error:")
-	fmt.Println("You can configure an AI provider with the following steps:")
-	fmt.Println("\n1. OpenAI API:")
-	fmt.Println("   - Visit: https://platform.openai.com/api-keys")
-	fmt.Println("   - Create a new API key")
-	fmt.Println("   - Set environment variable: export OPENAI_API_KEY=your_key")
+	fmt.Println("🤖 Our AI friend needs a little help!")
+	fmt.Println("\nLet's get you set up with an AI assistant. You can choose:")
 	
-	fmt.Println("\n2. Anthropic Claude API:")
-	fmt.Println("   - Visit: https://console.anthropic.com/")
-	fmt.Println("   - Get an API key")
-	fmt.Println("   - Set environment variable: export ANTHROPIC_API_KEY=your_key")
+	fmt.Println("\n1. ✨ OpenAI (ChatGPT)")
+	fmt.Println("   🌐 Visit: https://platform.openai.com/api-keys")
+	fmt.Println("   🎯 Create a new key")
+	fmt.Println("   💻 Run: export OPENAI_API_KEY=your_key")
 	
-	fmt.Println("\n3. Mistral API:")
-	fmt.Println("   - Visit: https://mistral.ai/")
-	fmt.Println("   - Get an API key")
-	fmt.Println("   - Set environment variable: export MISTRAL_API_KEY=your_key")
+	fmt.Println("\n2. 🔮 Anthropic Claude")
+	fmt.Println("   🌐 Visit: https://console.anthropic.com/")
+	fmt.Println("   🎯 Get your key")
+	fmt.Println("   💻 Run: export ANTHROPIC_API_KEY=your_key")
 	
-	fmt.Println("\nOr you can manually write your commit message:")
-	fmt.Println("git commit -m \"type(scope): description\"")
+	fmt.Println("\n3. 🌟 Mistral AI")
+	fmt.Println("   🌐 Visit: https://mistral.ai/")
+	fmt.Println("   🎯 Get your key")
+	fmt.Println("   💻 Run: export MISTRAL_API_KEY=your_key")
 	
-	return fmt.Errorf("AI provider not configured: %w", err)
+	fmt.Println("\n💡 Or, you can write your message manually:")
+	fmt.Println("git commit -m \"type(area): what you did\"")
+	
+	return fmt.Errorf("🔑 No AI helper configured: %w", err)
 }
 
 func handleCommitError(err error) error {
-	fmt.Println("❌ Failed to generate commit message")
-	fmt.Println("You can:")
-	fmt.Println("1. Try again")
-	fmt.Println("2. Write the message manually:")
-	fmt.Println("   git commit -m \"type(scope): description\"")
+	fmt.Println("❌ Oops! Something went wrong with the message")
+	fmt.Println("\n💡 You can:")
+	fmt.Println("1. 🔄 Try again")
+	fmt.Println("2. ✍️  Write it yourself:")
+	fmt.Println("   git commit -m \"type(area): what you did\"")
 	return err
 } 

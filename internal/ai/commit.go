@@ -31,16 +31,33 @@ func NewCommitAI() (*CommitAI, error) {
 
 	return &CommitAI{
 		Provider: provider,
-		Template: `Analyze the following git changes and generate a conventional commit message.
-The message should follow this format:
-type(scope): description
+		Template: `Hey there! 👋 Could you help me write a nice commit message for these changes?
 
-Types: feat, fix, docs, style, refactor, test, chore
-Scope: optional, describes section of codebase
-Description: present-tense summary
+I want to follow the "conventional commits" style, which looks like this:
+type(area): what changed
 
-Changes:
-%s`,
+The type can be:
+✨ feat: for new features
+🐛 fix: for bug fixes
+📚 docs: for documentation
+🎨 style: for visual/formatting changes
+♻️  refactor: for code improvements
+🧪 test: for adding tests
+🔧 chore: for maintenance stuff
+
+The area is optional - it's just what part of the project you worked on.
+The description should be clear and start with a present-tense verb.
+
+Here are the changes I made:
+%s
+
+Could you write a commit message that:
+1. Follows this format
+2. Is clear and friendly
+3. Captures the main changes
+4. Starts with the right type
+
+Thanks! 🙌`,
 	}, nil
 }
 
@@ -52,6 +69,9 @@ func detectProvider() (AIProvider, error) {
 			APIKey:  key,
 			BaseURL: "https://api.openai.com/v1/chat/completions",
 			Model:   "gpt-4",
+			Prompts: map[string]string{
+				"system": "You are a friendly and helpful assistant that writes clear, conventional commit messages. You make technical concepts easy to understand and always maintain a positive, encouraging tone.",
+			},
 		}, nil
 	}
 
@@ -62,6 +82,9 @@ func detectProvider() (AIProvider, error) {
 			APIKey:  key,
 			BaseURL: "https://api.anthropic.com/v1/messages",
 			Model:   "claude-3-opus-20240229",
+			Prompts: map[string]string{
+				"system": "You are Claude, a friendly AI that helps write clear commit messages. You make technical concepts approachable and always maintain a helpful, positive tone.",
+			},
 		}, nil
 	}
 
@@ -72,6 +95,9 @@ func detectProvider() (AIProvider, error) {
 			APIKey:  key,
 			BaseURL: "https://api.mistral.ai/v1/chat/completions",
 			Model:   "mistral-large-latest",
+			Prompts: map[string]string{
+				"system": "You are a friendly AI assistant that helps write clear commit messages. You make technical concepts easy to understand and always keep a positive, encouraging tone.",
+			},
 		}, nil
 	}
 

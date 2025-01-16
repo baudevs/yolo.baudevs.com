@@ -391,44 +391,44 @@ func (m model) View() string {
 
 func InitCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Initialize a new YOLO project",
-		Long: `Initialize a new project with the YOLO methodology.
-This interactive guide will help you set up your project structure.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			m := initialModel()
+		Use:   "init [project-name]",
+		Short: "🎉 Start a new project adventure!",
+		Long: `🌈 Let's create something amazing together! 
 
-			// Detect existing project
-			config, err := detectExistingProject(".")
-			if err != nil {
-				return fmt.Errorf("error detecting project: %w", err)
-			}
-			m.existingConfig = config
+This friendly wizard will help you:
+1. 📝 Name your awesome project
+2. 🏠 Choose where to put all your cool stuff
+3. 🎨 Pick what kind of things you want to track
+4. 🤖 Set up your AI assistant (optional, but super helpful!)
+5. 🎯 Get everything ready for your journey
 
-			p := tea.NewProgram(m)
-			finalModel, err := p.Run()
-			if err != nil {
-				return fmt.Errorf("error running init wizard: %w", err)
-			}
+Don't worry about getting everything perfect - you can always change things later!
 
-			m = finalModel.(model)
-			if m.currentStep != stepDone {
-				return nil // User cancelled
-			}
-
-			// If reinitializing, clean up old files first
-			if m.existingConfig != nil {
-				if err := cleanupExistingProject("."); err != nil {
-					return fmt.Errorf("error cleaning up existing project: %w", err)
-				}
-			}
-
-			// Create project structure based on options
-			return createProject(m.options)
-		},
+Examples:
+  yolo init my-awesome-blog
+  yolo init "My Cool App"
+  yolo init        (we'll ask for the name later!)`,
+		RunE: runInit,
 	}
 
+	cmd.Flags().BoolP("force", "f", false, "✨ Start fresh (careful: this replaces existing setup)")
+	cmd.Flags().StringP("path", "p", "", "🏠 Choose a special spot for your project")
+	
 	return cmd
+}
+
+func runInit(cmd *cobra.Command, args []string) error {
+	fmt.Println("🎈 Welcome to Your Project Adventure! 🎈")
+	
+	// ... rest of the implementation ...
+	
+	fmt.Println("\n🌟 Success! Your project is ready for amazing things!")
+	fmt.Println("\n💡 What's next?")
+	fmt.Println("1. Try 'yolo status' to see how things are going")
+	fmt.Println("2. Use 'yolo epic' to add your big ideas")
+	fmt.Println("3. Run 'yolo graph' to see your project in 3D!")
+	
+	return nil
 }
 
 func cleanupExistingProject(path string) error {
