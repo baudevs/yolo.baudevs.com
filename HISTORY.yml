@@ -1,2 +1,70 @@
 version: 1
-history: []
+history:
+  - type: feat
+    scope: init
+    subject: "create interactive initialization command"
+    body: |
+      - Add interactive TUI for project setup
+      - Support project name and path input
+      - Add Git integration choice
+      - Implement folder structure selection
+      - Add AI provider selection
+      - Support custom prompts configuration
+      - Create comprehensive project structure
+      - Generate initial documentation files
+
+  - type: feat
+    scope: init
+    subject: "add project detection and reconfiguration"
+    body: |
+      - Detect existing YOLO projects
+      - Add option to reinitialize with confirmation
+      - Support partial reconfiguration of settings
+      - Preserve project data during updates
+      - Add safety checks for destructive actions
+
+  - type: feat
+    scope: graph
+    subject: "create interactive graph visualization"
+    body: |
+      - Add web-based graph visualization
+      - Implement Three.js for 3D rendering
+      - Add D3.js for force-directed layout
+      - Create interactive node selection
+      - Add zoom and pan controls
+      - Implement sidebar for node details
+      - Add search functionality
+      - Support real-time updates via WebSocket
+
+  - type: feat
+    scope: graph
+    subject: "embed web assets in binary"
+    body: |
+      - Use Go embed for web files
+      - Include HTML, CSS, and JavaScript
+      - Add static file server
+      - Implement WebSocket handler
+      - Add API endpoints for node data
+      - Make graph server portable
+
+  - type: style
+    scope: ui
+    subject: "enhance graph visualization UI"
+    body: |
+      - Add dark theme
+      - Implement responsive layout
+      - Add loading animations
+      - Enhance node and link styling
+      - Improve sidebar transitions
+      - Add status badges
+      - Implement type indicators
+
+  - type: feat
+    scope: core
+    subject: "implement conventional commits"
+    body: |
+      - Add support for conventional commits
+      - Implement semantic versioning
+      - Add changelog generation
+      - Track project history
+      - Support project versioning
