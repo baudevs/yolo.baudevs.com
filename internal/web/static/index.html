@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Graph</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="app" class="flex h-screen relative">
+        <!-- Sidebar -->
+        <div id="sidebar" class="w-80 bg-gray-800 transform -translate-x-full transition-transform duration-300 fixed top-0 left-0 h-full z-20 overflow-y-auto">
+            <div class="p-4">
+                <div class="mb-4">
+                    <input type="text" id="search" placeholder="Search nodes..." class="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:outline-none focus:border-purple-500">
+                </div>
+                <div id="node-details" class="text-sm"></div>
+            </div>
+        </div>
+
+        <!-- Graph Container -->
+        <div id="graph" class="flex-1 relative"></div>
+
+        <!-- Controls -->
+        <div class="fixed top-4 left-4 z-10 flex gap-2">
+            <button id="toggle-sidebar" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                ☰
+            </button>
+        </div>
+        <div class="fixed bottom-4 right-4 z-10 flex gap-2">
+            <button id="zoom-in" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                +
+            </button>
+            <button id="zoom-out" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                -
+            </button>
+            <button id="reset-view" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded">
+                ⟲
+            </button>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                <p>Loading project graph...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="/static/js/graph.js"></script>
+    <script type="module" src="/static/js/sidebar.js"></script>
+    <script type="module" src="/static/js/controls.js"></script>
+    <script type="module" src="/static/js/websocket.js"></script>
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html> 
