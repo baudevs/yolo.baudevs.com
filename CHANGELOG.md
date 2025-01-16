@@ -47,3 +47,19 @@ All notable changes to this project will be documented in this file.
   - Changelog generation
   - Project history tracking
   - Version management
+
+### 2025-01-16
+- Sure, here is a commit message that follows your requirements: ```
+♻️ refactor(cmd/yolo): refactor project and enhance interactive command-line
+
+This commit incorporates several changes to the cmd/yolo and internal/commands files to refactor the project organization and enhance the interactivity of the command-line interface. 
+
+Major updates include changes to `main.go`, `commit.go` and `graph.go` files. Main changes: 
+1. Refactor the way rootCmd is defined and added commands to it 
+2. Add a function to initialize AI provider in `commit.go`
+3. Implement real-time graph updates and broadcasting messages to all connections in `graph.go`. 
+
+🎉 Happy coding! 
+```
+
+Let me know if this works for you or if you need further assistance.

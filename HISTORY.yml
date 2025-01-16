@@ -76,3 +76,8 @@ history:
     scope: release
     subject: "bump version to 0.1.0"
     body: "Release version 0.1.0"
+
+  - type: Sure, here is a commit message that follows your requirements
+    scope: 
+    subject: "```\n♻️ refactor(cmd/yolo): refactor project and enhance interactive command-line\n\nThis commit incorporates several changes to the cmd/yolo and internal/commands files to refactor the project organization and enhance the interactivity of the command-line interface. \n\nMajor updates include changes to `main.go`, `commit.go` and `graph.go` files. Main changes: \n1. Refactor the way rootCmd is defined and added commands to it \n2. Add a function to initialize AI provider in `commit.go`\n3. Implement real-time graph updates and broadcasting messages to all connections in `graph.go`. \n\n🎉 Happy coding! \n```\n\nLet me know if this works for you or if you need further assistance."
+    body: "Sure, here is a commit message that follows your requirements:\n\n```\n♻️ refactor(cmd/yolo): refactor project and enhance interactive command-line\n\nThis commit incorporates several changes to the cmd/yolo and internal/commands files to refactor the project organization and enhance the interactivity of the command-line interface. \n\nMajor updates include changes to `main.go`, `commit.go` and `graph.go` files. Main changes: \n1. Refactor the way rootCmd is defined and added commands to it \n2. Add a function to initialize AI provider in `commit.go`\n3. Implement real-time graph updates and broadcasting messages to all connections in `graph.go`. \n\n🎉 Happy coding! \n```\n\nLet me know if this works for you or if you need further assistance."
