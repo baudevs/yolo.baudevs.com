@@ -37,6 +37,29 @@ go build -o bin/yolo cmd/yolo/main.go
 cp bin/yolo /usr/local/bin/
 ```
 
+### macOS and Linux
+```bash
+curl -fsSL https://raw.githubusercontent.com/baudevs/yolo-cli/main/scripts/install.sh | bash
+```
+
+To install a specific version:
+```bash
+curl -fsSL https://raw.githubusercontent.com/baudevs/yolo-cli/main/scripts/install.sh | bash -s VERSION
+```
+
+### Windows
+Using PowerShell:
+```powershell
+irm https://raw.githubusercontent.com/baudevs/yolo-cli/main/scripts/install.ps1 | iex
+```
+
+To install a specific version:
+```powershell
+$Version="VERSION"; irm https://raw.githubusercontent.com/baudevs/yolo-cli/main/scripts/install.ps1 | iex
+```
+
+Alternatively, you can download the appropriate zip file for your architecture (amd64 or arm64) from the [releases page](https://github.com/baudevs/yolo-cli/releases) and extract it to a directory in your PATH.
+
 ## Usage
 
 ### Initialize a New Project
