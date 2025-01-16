@@ -68,3 +68,11 @@ history:
       - Add changelog generation
       - Track project history
       - Support project versioning
+
+version: 0.1.0
+date: 2025-01-16
+history:
+  - type: chore
+    scope: release
+    subject: "bump version to 0.1.0"
+    body: "Release version 0.1.0"
