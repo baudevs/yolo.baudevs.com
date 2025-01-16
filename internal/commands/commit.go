@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/baudevs/yolo-cli/internal/ai"
 	"github.com/spf13/cobra"
 )
 
@@ -219,4 +220,12 @@ func handleCommitError(err error) error {
 	fmt.Println("2. ✍️  Write it yourself:")
 	fmt.Println("   git commit -m \"type(area): what you did\"")
 	return err
+}
+
+func initAIProvider() (*ai.CommitAI, error) {
+	ai, err := ai.NewCommitAI()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize AI provider: %w", err)
+	}
+	return ai, nil
 } 
