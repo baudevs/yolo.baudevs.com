@@ -1,13 +1,2 @@
-version: 0.1.0
-date: 2025-01-15
-changes:
-  - type: feature
-    description: "Initial project setup with YOLO methodology"
-    impact: "Established foundation for project documentation"
-    files:
-      - "README.md"
-      - "HISTORY.yml"
-      - "CHANGELOG.md"
-      - "WISHES.md"
-      - "STRATEGY.md"
-      - "LLM_INSTRUCTIONS.md"
+version: 1
+history: []
