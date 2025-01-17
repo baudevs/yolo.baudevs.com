@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/baudevs/yolo-cli/internal/web"
@@ -88,13 +89,30 @@ func runGraph(cmd *cobra.Command, args []string) error {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// Serve static files from embedded filesystem
-	fileServer := http.FileServer(http.FS(web.WebFiles))
-	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+	// Serve static files from embedded filesystem with correct MIME types
+	r.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/static/")
+		
+		// Set correct MIME types
+		if strings.HasSuffix(path, ".js") {
+			w.Header().Set("Content-Type", "application/javascript")
+		} else if strings.HasSuffix(path, ".css") {
+			w.Header().Set("Content-Type", "text/css")
+		} else if strings.HasSuffix(path, ".html") {
+			w.Header().Set("Content-Type", "text/html")
+		}
+
+		content, err := web.WebFiles.ReadFile("static/" + path)
+		if err != nil {
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		w.Write(content)
+	})
 
 	// API routes
 	r.Get("/api/nodes", handleGetNodes)
-	r.Get("/api/ws", handleWebSocket)
+	r.Get("/ws", handleWebSocket)
 
 	// Serve index.html for all other routes
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +129,7 @@ func runGraph(cmd *cobra.Command, args []string) error {
 	port := 4010
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("\n🌟 Your project visualization is ready at http://localhost%s\n", addr)
-	fmt.Println("\n💡 Quick tips:")
+	fmt.Println("\n�� Quick tips:")
 	fmt.Println("🖱️  Left click + drag to rotate")
 	fmt.Println("🔍 Scroll to zoom in/out")
 	fmt.Println("👆 Click on nodes to see details")

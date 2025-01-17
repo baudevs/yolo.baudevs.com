@@ -1,230 +1,147 @@
 package ai
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
-	"strings"
+
+	"github.com/sashabaranov/go-openai"
 )
 
-type AIProvider struct {
-	Name     string
-	APIKey   string
-	BaseURL  string
-	Model    string
-	Prompts  map[string]string
-}
-
+// CommitAI handles AI-powered commit message generation
 type CommitAI struct {
-	Provider AIProvider
-	Context  string
-	Template string
+	client *openai.Client
 }
 
+// CommitMessage represents the structured output from AI
+type CommitMessage struct {
+	Type        string   `json:"type"`
+	Scope       string   `json:"scope,omitempty"`
+	Subject     string   `json:"subject"`
+	Body        string   `json:"body,omitempty"`
+	Breaking    bool     `json:"breaking,omitempty"`
+	IssueRefs   []string `json:"issue_refs,omitempty"`
+	CoAuthors   []string `json:"co_authors,omitempty"`
+}
+
+// NewCommitAI creates a new CommitAI instance
 func NewCommitAI() (*CommitAI, error) {
-	provider, err := detectProvider()
-	if err != nil {
-		return nil, err
+	key := os.Getenv("OPENAI_API_KEY")
+	if key == "" {
+		return nil, fmt.Errorf("no AI provider configured")
 	}
 
+	client := openai.NewClient(key)
 	return &CommitAI{
-		Provider: provider,
-		Template: `Hey there! 👋 Could you help me write a nice commit message for these changes?
-
-I want to follow the "conventional commits" style, which looks like this:
-type(area): what changed
-
-The type can be:
-✨ feat: for new features
-🐛 fix: for bug fixes
-📚 docs: for documentation
-🎨 style: for visual/formatting changes
-♻️  refactor: for code improvements
-🧪 test: for adding tests
-🔧 chore: for maintenance stuff
-
-The area is optional - it's just what part of the project you worked on.
-The description should be clear and start with a present-tense verb.
-
-Here are the changes I made:
-%s
-
-Could you write a commit message that:
-1. Follows this format
-2. Is clear and friendly
-3. Captures the main changes
-4. Starts with the right type
-
-Thanks! 🙌`,
+		client: client,
 	}, nil
 }
 
-func detectProvider() (AIProvider, error) {
-	// Try OpenAI
-	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
-		return AIProvider{
-			Name:    "openai",
-			APIKey:  key,
-			BaseURL: "https://api.openai.com/v1/chat/completions",
-			Model:   "gpt-4",
-			Prompts: map[string]string{
-				"system": "You are a friendly and helpful assistant that writes clear, conventional commit messages. You make technical concepts easy to understand and always maintain a positive, encouraging tone.",
-			},
-		}, nil
-	}
+// GenerateCommitMessage generates a commit message based on the changes
+func (ai *CommitAI) GenerateCommitMessage(changes string) (string, error) {
+	prompt := `Analyze the following Git changes and generate a conventional commit message in JSON format.
 
-	// Try Anthropic
-	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-		return AIProvider{
-			Name:    "anthropic",
-			APIKey:  key,
-			BaseURL: "https://api.anthropic.com/v1/messages",
-			Model:   "claude-3-opus-20240229",
-			Prompts: map[string]string{
-				"system": "You are Claude, a friendly AI that helps write clear commit messages. You make technical concepts approachable and always maintain a helpful, positive tone.",
-			},
-		}, nil
-	}
+Follow these rules:
+1. Use semantic commit types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+2. Keep the subject line clear and concise (max 72 chars)
+3. Use present tense ("add" not "added")
+4. Don't end the subject line with a period
+5. Add relevant details in the body
+6. Mark breaking changes with breaking=true
+7. Include issue references if found in the changes
+8. Add co-authors if multiple contributors are detected
 
-	// Try Mistral
-	if key := os.Getenv("MISTRAL_API_KEY"); key != "" {
-		return AIProvider{
-			Name:    "mistral",
-			APIKey:  key,
-			BaseURL: "https://api.mistral.ai/v1/chat/completions",
-			Model:   "mistral-large-latest",
-			Prompts: map[string]string{
-				"system": "You are a friendly AI assistant that helps write clear commit messages. You make technical concepts easy to understand and always keep a positive, encouraging tone.",
-			},
-		}, nil
-	}
-
-	return AIProvider{}, fmt.Errorf("no AI provider configured")
+The response must be a valid JSON object with this structure:
+{
+  "type": "feat|fix|docs|style|refactor|perf|test|build|ci|chore",
+  "scope": "optional area affected",
+  "subject": "concise description",
+  "body": "optional detailed explanation",
+  "breaking": false,
+  "issue_refs": ["optional array of issue references"],
+  "co_authors": ["optional array of co-authors"]
 }
 
-func (c *CommitAI) GenerateCommitMessage(changes string) (string, error) {
-	prompt := fmt.Sprintf(c.Template, changes)
+Here are some examples of good commit messages:
 
-	var message string
-	var err error
-
-	switch c.Provider.Name {
-	case "openai":
-		message, err = c.callOpenAI(prompt)
-	case "anthropic":
-		message, err = c.callAnthropic(prompt)
-	case "mistral":
-		message, err = c.callMistral(prompt)
-	default:
-		return "", fmt.Errorf("unsupported AI provider: %s", c.Provider.Name)
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	// Clean up the message
-	message = strings.TrimSpace(message)
-	if !strings.Contains(message, ":") {
-		return "", fmt.Errorf("invalid commit message format")
-	}
-
-	return message, nil
+Example 1 - New Feature:
+{
+  "type": "feat",
+  "scope": "auth",
+  "subject": "add OAuth2 authentication flow",
+  "body": "Implement OAuth2 authentication with Google and GitHub providers:\n- Add OAuth routes and handlers\n- Create user session management\n- Add secure token storage\n- Implement callback handling",
+  "breaking": false,
+  "issue_refs": ["#123", "#124"],
+  "co_authors": ["jane@example.com"]
 }
 
-func (c *CommitAI) callOpenAI(prompt string) (string, error) {
-	payload := map[string]interface{}{
-		"model": c.Provider.Model,
-		"messages": []map[string]string{
-			{
-				"role":    "system",
-				"content": "You are a helpful assistant that generates conventional commit messages.",
+Example 2 - Bug Fix:
+{
+  "type": "fix",
+  "scope": "api",
+  "subject": "handle null response in user profile endpoint",
+  "body": "Add null checks to prevent crashes when user profile is incomplete",
+  "breaking": false
+}
+
+Example 3 - Breaking Change:
+{
+  "type": "feat",
+  "scope": "database",
+  "subject": "migrate to PostgreSQL",
+  "body": "Switch from SQLite to PostgreSQL for better scalability:\n- Update database schema\n- Migrate existing data\n- Update connection handling",
+  "breaking": true,
+  "issue_refs": ["#234"]
+}
+
+Example 4 - Documentation:
+{
+  "type": "docs",
+  "scope": "readme",
+  "subject": "update installation instructions",
+  "body": "Add detailed steps for Windows and Linux installation"
+}
+
+Example 5 - Refactor:
+{
+  "type": "refactor",
+  "scope": "core",
+  "subject": "simplify error handling",
+  "body": "Consolidate error handling into a central utility:\n- Create error types\n- Add context preservation\n- Improve error messages"
+}
+
+Now analyze these changes and generate a similar commit message:
+` + changes
+
+	resp, err := ai.client.CreateChatCompletion(
+		context.Background(),
+		openai.ChatCompletionRequest{
+			Model: openai.GPT4,
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: "You are a helpful assistant that generates conventional commit messages in JSON format. Always ensure the output is valid JSON and follows the examples provided.",
+				},
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: prompt,
+				},
 			},
-			{
-				"role":    "user",
-				"content": prompt,
+			ResponseFormat: &openai.ChatCompletionResponseFormat{
+				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
 			},
 		},
-	}
-
-	return c.makeAPICall(payload)
-}
-
-func (c *CommitAI) callAnthropic(prompt string) (string, error) {
-	payload := map[string]interface{}{
-		"model": c.Provider.Model,
-		"messages": []map[string]string{
-			{
-				"role":    "user",
-				"content": prompt,
-			},
-		},
-	}
-
-	return c.makeAPICall(payload)
-}
-
-func (c *CommitAI) callMistral(prompt string) (string, error) {
-	payload := map[string]interface{}{
-		"model": c.Provider.Model,
-		"messages": []map[string]string{
-			{
-				"role":    "user",
-				"content": prompt,
-			},
-		},
-	}
-
-	return c.makeAPICall(payload)
-}
-
-func (c *CommitAI) makeAPICall(payload interface{}) (string, error) {
-	jsonData, err := json.Marshal(payload)
+	)
 	if err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", c.Provider.BaseURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", err
+	// Validate JSON structure
+	var msg CommitMessage
+	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &msg); err != nil {
+		return "", fmt.Errorf("invalid JSON response: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Provider.APIKey))
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API request failed with status: %d", resp.StatusCode)
-	}
-
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
-	}
-
-	// Extract message based on provider
-	switch c.Provider.Name {
-	case "openai":
-		choices := result["choices"].([]interface{})
-		message := choices[0].(map[string]interface{})["message"].(map[string]interface{})
-		return message["content"].(string), nil
-	case "anthropic":
-		content := result["content"].([]interface{})
-		text := content[0].(map[string]interface{})["text"].(string)
-		return text, nil
-	case "mistral":
-		choices := result["choices"].([]interface{})
-		message := choices[0].(map[string]interface{})["message"].(map[string]interface{})
-		return message["content"].(string), nil
-	default:
-		return "", fmt.Errorf("unsupported provider response format")
-	}
+	return resp.Choices[0].Message.Content, nil
 } 

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,17 @@ import (
 	"github.com/baudevs/yolo-cli/internal/ai"
 	"github.com/spf13/cobra"
 )
+
+// CommitMessage represents the structured output from AI
+type CommitMessage struct {
+	Type        string   `json:"type"`
+	Scope       string   `json:"scope,omitempty"`
+	Subject     string   `json:"subject"`
+	Body        string   `json:"body,omitempty"`
+	Breaking    bool     `json:"breaking,omitempty"`
+	IssueRefs   []string `json:"issue_refs,omitempty"`
+	CoAuthors   []string `json:"co_authors,omitempty"`
+}
 
 var CommitCmd = &cobra.Command{
 	Use:   "commit",
@@ -73,6 +85,15 @@ func runCommit(cmd *cobra.Command, args []string) error {
 		return handleCommitError(err)
 	}
 
+	// Parse the JSON response
+	var commitMsg CommitMessage
+	if err := json.Unmarshal([]byte(message), &commitMsg); err != nil {
+		return fmt.Errorf("❌ Oops! Couldn't understand AI's response: %w", err)
+	}
+
+	// Format the conventional commit message
+	formattedMessage := formatCommitMessage(commitMsg)
+
 	// Stage changes
 	fmt.Println("📦 Packaging up your changes...")
 	if err := stageChanges(); err != nil {
@@ -81,13 +102,13 @@ func runCommit(cmd *cobra.Command, args []string) error {
 
 	// Create commit
 	fmt.Println("💾 Saving your work...")
-	if err := createCommit(message); err != nil {
+	if err := createCommit(formattedMessage); err != nil {
 		return fmt.Errorf("❌ Oops! Couldn't save your changes: %w", err)
 	}
 
 	// Update YOLO documentation
 	fmt.Println("📝 Updating the project story...")
-	if err := updateDocs(message); err != nil {
+	if err := updateDocs(formattedMessage); err != nil {
 		return fmt.Errorf("❌ Oops! Couldn't update the docs: %w", err)
 	}
 
@@ -97,7 +118,7 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create documentation commit
-	docMessage := fmt.Sprintf("docs: update YOLO documentation\n\n%s", message)
+	docMessage := fmt.Sprintf("docs: update YOLO documentation\n\n%s", formattedMessage)
 	if err := createCommit(docMessage); err != nil {
 		return fmt.Errorf("❌ Oops! Couldn't save the doc updates: %w", err)
 	}
@@ -108,6 +129,35 @@ func runCommit(cmd *cobra.Command, args []string) error {
 	fmt.Println("2. Run 'yolo status' to see how things are going")
 	fmt.Println("3. Check 'yolo graph' to see your progress!")
 	return nil
+}
+
+func formatCommitMessage(msg CommitMessage) string {
+	// Start with type and scope
+	result := msg.Type
+	if msg.Scope != "" {
+		result += fmt.Sprintf("(%s)", msg.Scope)
+	}
+	if msg.Breaking {
+		result += "!"
+	}
+	result += fmt.Sprintf(": %s", msg.Subject)
+
+	// Add body if present
+	if msg.Body != "" {
+		result += fmt.Sprintf("\n\n%s", msg.Body)
+	}
+
+	// Add issue references if present
+	if len(msg.IssueRefs) > 0 {
+		result += fmt.Sprintf("\n\nRefs: %s", strings.Join(msg.IssueRefs, ", "))
+	}
+
+	// Add co-authors if present
+	for _, author := range msg.CoAuthors {
+		result += fmt.Sprintf("\n\nCo-authored-by: %s", author)
+	}
+
+	return result
 }
 
 func getGitChanges() (string, error) {
