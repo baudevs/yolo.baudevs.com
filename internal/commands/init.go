@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/baudevs/yolo-cli/internal/core"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -420,7 +421,35 @@ Examples:
 func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("🎈 Welcome to Your Project Adventure! 🎈")
 	
-	// ... rest of the implementation ...
+	// Get flags
+	force, _ := cmd.Flags().GetBool("force")
+	path, _ := cmd.Flags().GetString("path")
+	
+	// If path is not specified, use current directory
+	if path == "" {
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+		path = currentDir
+	}
+	
+	// Check if directory already contains YOLO files
+	if !force {
+		if _, err := os.Stat(filepath.Join(path, "yolo")); err == nil {
+			return fmt.Errorf("directory already contains YOLO files. Use --force to reinitialize")
+		}
+	}
+	
+	// Change to target directory
+	if err := os.Chdir(path); err != nil {
+		return fmt.Errorf("failed to change to directory %s: %w", path, err)
+	}
+	
+	// Initialize project
+	if err := core.InitializeProject(); err != nil {
+		return fmt.Errorf("failed to initialize project: %w", err)
+	}
 	
 	fmt.Println("\n🌟 Success! Your project is ready for amazing things!")
 	fmt.Println("\n💡 What's next?")

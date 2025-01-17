@@ -29,6 +29,7 @@ No complicated stuff - just run a command and watch the magic happen!`,
 }
 
 func init() {
+	rootCmd.AddCommand(commands.InitCmd())
 	rootCmd.AddCommand(commands.PromptCmd())
 	rootCmd.AddCommand(commands.GraphCmd)
 	rootCmd.AddCommand(commands.CommitCmd)
