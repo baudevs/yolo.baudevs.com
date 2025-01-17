@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/baudevs/yolo-cli/internal/core"
+	"github.com/baudevs/yolo-cli/internal/templates"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -396,22 +399,27 @@ func InitCmd() *cobra.Command {
 		Long: `🌈 Let's create something amazing together! 
 
 This friendly wizard will help you:
-1. 📝 Name your awesome project
-2. 🏠 Choose where to put all your cool stuff
-3. 🎨 Pick what kind of things you want to track
-4. 🤖 Set up your AI assistant (optional, but super helpful!)
-5. 🎯 Get everything ready for your journey
+1. 📝 Create a new project or update an existing one
+2. 🏠 Set up your project structure
+3. 🎨 Configure your settings
+4. 🤖 Update templates and documentation
+5. 🎯 Keep everything in sync
 
-Don't worry about getting everything perfect - you can always change things later!
+Options:
+  --force    Start fresh (careful: this replaces existing setup)
+  --update   Update existing project with new features and templates
+  --path     Choose a special spot for your project
 
 Examples:
   yolo init my-awesome-blog
   yolo init "My Cool App"
-  yolo init        (we'll ask for the name later!)`,
+  yolo init --update  # Update existing project
+  yolo init --force   # Start fresh`,
 		RunE: runInit,
 	}
 
 	cmd.Flags().BoolP("force", "f", false, "✨ Start fresh (careful: this replaces existing setup)")
+	cmd.Flags().BoolP("update", "u", false, "🔄 Update existing project with new features")
 	cmd.Flags().StringP("path", "p", "", "🏠 Choose a special spot for your project")
 	
 	return cmd
@@ -420,7 +428,53 @@ Examples:
 func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("🎈 Welcome to Your Project Adventure! 🎈")
 	
-	// ... rest of the implementation ...
+	// Get flags
+	force, _ := cmd.Flags().GetBool("force")
+	update, _ := cmd.Flags().GetBool("update")
+	path, _ := cmd.Flags().GetString("path")
+	
+	// If path is not specified, use current directory
+	if path == "" {
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+		path = currentDir
+	}
+	
+	// Check for existing project
+	existingConfig, err := detectExistingProject(path)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing project: %w", err)
+	}
+
+	if existingConfig != nil {
+		if force {
+			fmt.Println("🔄 Reinitializing project (force mode)...")
+			if err := cleanupExistingProject(path); err != nil {
+				return fmt.Errorf("failed to cleanup existing project: %w", err)
+			}
+		} else if update {
+			fmt.Println("🔄 Updating existing project...")
+			if err := updateExistingProject(path, existingConfig); err != nil {
+				return fmt.Errorf("failed to update project: %w", err)
+			}
+			fmt.Println("\n✨ Project updated successfully!")
+			return nil
+		} else {
+			return fmt.Errorf("directory already contains YOLO files. Use --force to reinitialize or --update to update")
+		}
+	}
+	
+	// Change to target directory
+	if err := os.Chdir(path); err != nil {
+		return fmt.Errorf("failed to change to directory %s: %w", path, err)
+	}
+	
+	// Initialize project
+	if err := core.InitializeProject(); err != nil {
+		return fmt.Errorf("failed to initialize project: %w", err)
+	}
 	
 	fmt.Println("\n🌟 Success! Your project is ready for amazing things!")
 	fmt.Println("\n💡 What's next?")
@@ -429,6 +483,143 @@ func runInit(cmd *cobra.Command, args []string) error {
 	fmt.Println("3. Run 'yolo graph' to see your project in 3D!")
 	
 	return nil
+}
+
+func updateExistingProject(path string, existingConfig *ProjectConfig) error {
+	// Create any missing directories
+	newDirs := []string{
+		"yolo/relationships", // Added in newer versions
+		"yolo/settings",     // Added in newer versions
+	}
+	
+	for _, dir := range newDirs {
+		fullPath := filepath.Join(path, dir)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(fullPath, 0755); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", dir, err)
+			}
+			fmt.Printf("✨ Added new directory: %s\n", dir)
+		}
+	}
+
+	// Update templates and documentation
+	updates := map[string]string{
+		"LLM_INSTRUCTIONS.md": templates.LLMInstructionsTemplate, // New AI guidelines
+		"yolo/settings/prompts.yml": templates.PromptsTemplate,   // New prompts
+	}
+
+	for file, template := range updates {
+		fullPath := filepath.Join(path, file)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			content := os.Expand(template, func(key string) string {
+				if key == "date" {
+					return time.Now().Format("2006-01-02")
+				}
+				return ""
+			})
+
+			if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+				return fmt.Errorf("failed to create file %s: %w", file, err)
+			}
+			fmt.Printf("✨ Added new file: %s\n", file)
+		}
+	}
+
+	// Update existing files with new sections
+	if err := updateChangelogWithNewFeatures(path); err != nil {
+		return fmt.Errorf("failed to update changelog: %w", err)
+	}
+
+	if err := updateHistoryWithNewFeatures(path); err != nil {
+		return fmt.Errorf("failed to update history: %w", err)
+	}
+
+	// Update configuration
+	existingConfig.UseConventionalCommits = true // New default
+	if err := saveProjectConfig(path, existingConfig); err != nil {
+		return fmt.Errorf("failed to update config: %w", err)
+	}
+
+	return nil
+}
+
+func updateChangelogWithNewFeatures(path string) error {
+	changelogPath := filepath.Join(path, "CHANGELOG.md")
+	content, err := os.ReadFile(changelogPath)
+	if err != nil {
+		return err
+	}
+
+	// Add new sections if they don't exist
+	if !strings.Contains(string(content), "Work in Progress") {
+		newContent := string(content) + "\n\n### Work in Progress\n- System-wide keyboard shortcuts (F011)\n  - Web interface\n  - Configuration system\n  - Global shortcuts"
+		return os.WriteFile(changelogPath, []byte(newContent), 0644)
+	}
+
+	return nil
+}
+
+func updateHistoryWithNewFeatures(path string) error {
+	historyPath := filepath.Join(path, "HISTORY.yml")
+	var history map[string]interface{}
+
+	content, err := os.ReadFile(historyPath)
+	if err != nil {
+		return err
+	}
+
+	if err := yaml.Unmarshal(content, &history); err != nil {
+		return err
+	}
+
+	// Add new features if they don't exist
+	changes, ok := history["changes"].([]interface{})
+	if !ok {
+		changes = make([]interface{}, 0)
+	}
+
+	// Add new feature entry
+	newFeature := map[string]interface{}{
+		"type": "feature",
+		"id":   "F011",
+		"name": "System-wide Keyboard Shortcuts",
+		"status": "in_progress",
+		"components": []string{"shortcuts", "web", "macos"},
+	}
+
+	// Check if feature already exists
+	exists := false
+	for _, change := range changes {
+		if c, ok := change.(map[string]interface{}); ok {
+			if id, ok := c["id"].(string); ok && id == "F011" {
+				exists = true
+				break
+			}
+		}
+	}
+
+	if !exists {
+		changes = append(changes, newFeature)
+		history["changes"] = changes
+		
+		newContent, err := yaml.Marshal(history)
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(historyPath, newContent, 0644)
+	}
+
+	return nil
+}
+
+func saveProjectConfig(path string, config *ProjectConfig) error {
+	configPath := filepath.Join(path, "yolo", "settings", "config.yml")
+	content, err := yaml.Marshal(config)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(configPath, content, 0644)
 }
 
 func cleanupExistingProject(path string) error {

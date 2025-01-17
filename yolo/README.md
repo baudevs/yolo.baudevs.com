@@ -4,8 +4,8 @@
 
 ### Epics
 - [E001] Interactive Project Initialization
-  - Status: Implemented
-  - Features: F001-F004
+  - Status: In Progress
+  - Features: F001-F004, F011
   - Description: Interactive project setup and configuration
 
 - [E002] Project Visualization
@@ -22,15 +22,30 @@
 - [F006] Interactive Controls ✓
 - [F007] Real-time Updates ✓
 - [F008] Embedded Web Server ✓
+- [F011] System-wide Keyboard Shortcuts ⚡
+  - Status: In Progress
+  - Web Interface: Implemented ✓
+  - Configuration: Implemented ✓
+  - macOS Daemon: Pending
 
 ### Tasks
 - [T001-T005] Project Initialization Tasks ✓
 - [T010-T017] Graph Visualization Tasks ✓
+- [T011.1-T011.5] Shortcuts Configuration Tasks
+  - T011.1: Web Interface ✓
+  - T011.2: macOS Daemon ⚡
+  - T011.3: Configuration Command ✓
+  - T011.4: Persistence Layer ✓
+  - T011.5: Management Features ✓
 
 ### Relationships
 - [R001] Project Initialization to Graph Visualization
   - Type: Dependency
   - Status: Active
+- [R002] Shortcuts to AI Integration
+  - Type: Enhancement
+  - Status: Active
+  - Description: Enables quick access to AI features via shortcuts
 
 ## Documentation Guidelines
 1. Never delete information, mark as:
@@ -60,3 +75,7 @@
    - Update CHANGELOG.md
    - Track in HISTORY.yml
    - Document migrations
+
+## Legend
+✓ - Implemented
+⚡ - In Progress
