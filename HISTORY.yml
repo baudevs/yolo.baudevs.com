@@ -69,6 +69,22 @@ history:
       - Track project history
       - Support project versioning
 
+  - type: feat
+    scope: shortcuts
+    subject: "Add system-wide keyboard shortcuts configuration"
+    body: |
+      - Create web interface for configuring system-wide shortcuts
+      - Implement macOS shortcut daemon for global keyboard shortcuts
+      - Add shortcut configuration command under `yolo prompt`
+      - Support shortcut persistence and management
+      - Focus on macOS support with future Windows/Linux expansion
+    breaking: false
+    issues: []
+    notes:
+      - "Initial implementation focuses on macOS"
+      - "Requires system permissions for global shortcuts"
+    refs: []
+
 version: 0.1.0
 date: 2025-01-16
 history:

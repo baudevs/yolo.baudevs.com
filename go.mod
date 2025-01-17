@@ -13,7 +13,6 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/sashabaranov/go-openai v1.36.1
 	github.com/spf13/cobra v1.8.0
-	github.com/tmc/langchaingo v0.1.12
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -21,9 +20,6 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
-	github.com/dlclark/regexp2 v1.10.0 // indirect
-	github.com/gage-technologies/mistral-go v1.0.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -34,7 +30,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
-	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
 	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
