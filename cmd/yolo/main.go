@@ -34,6 +34,7 @@ func init() {
 	rootCmd.AddCommand(commands.GraphCmd)
 	rootCmd.AddCommand(commands.CommitCmd)
 	rootCmd.AddCommand(commands.ShortcutsCmd)
+	rootCmd.AddCommand(commands.ExplainCmd())
 }
 
 func main() {
