@@ -2,64 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0] - 2024-03-XX
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0-beta] - 2024-01-17
 
 ### Added
-
-- **Interactive Initialization**
-  - Interactive TUI for project setup
-  - Project name and path configuration
-  - Git integration options
-  - Customizable folder structure
-  - AI provider selection
-  - Custom prompts support
-  - Project detection and reconfiguration
-  - Safety checks for destructive actions
-
-- **Graph Visualization**
-  - Web-based interactive graph
-  - Three.js 3D rendering
-  - D3.js force-directed layout
-  - Node selection and interaction
-  - Zoom and pan controls
-  - Detailed sidebar
-  - Search functionality
-  - Real-time WebSocket updates
-  - Embedded web assets in binary
-  - Portable graph server
-
-### Changed
-
-- **UI Enhancements**
-  - Dark theme implementation
-  - Responsive layout design
-  - Loading animations
-  - Enhanced node and link styling
-  - Smooth sidebar transitions
-  - Status badges
-  - Type indicators
-
-### Added
-
-- **Core Features**
+- Project initialization with `yolo init`
+  - Interactive setup wizard
+  - Custom project paths
+  - Force reinitialization option
+  - Standard directory structure
+  - Initial documentation files
+- Project visualization with `yolo graph`
+  - 3D interactive view
+  - Real-time updates
+  - Relationship mapping
+- AI integration with `yolo prompt`
+  - Context-aware assistance
+  - Custom prompt templates
+  - Clipboard integration
+- Git integration with `yolo commit`
   - Conventional commits support
-  - Semantic versioning
-  - Changelog generation
-  - Project history tracking
-  - Version management
+  - Smart commit messages
+  - History preservation
 
-### 2025-01-16
-- Sure, here is a commit message that follows your requirements: ```
-♻️ refactor(cmd/yolo): refactor project and enhance interactive command-line
+### Work in Progress
+- System-wide keyboard shortcuts (F011)
+  - ✅ Web interface for configuring shortcuts
+  - ✅ JSON-based configuration persistence
+  - ✅ WebSocket for real-time updates
+  - 🏗️ macOS daemon for global shortcut capture
+  - 📅 Linux support planned
 
-This commit incorporates several changes to the cmd/yolo and internal/commands files to refactor the project organization and enhance the interactivity of the command-line interface. 
+### Fixed
+- Project initialization reliability
+- Command registration in root command
+- File and directory creation handling
+- Configuration file management
 
-Major updates include changes to `main.go`, `commit.go` and `graph.go` files. Main changes: 
-1. Refactor the way rootCmd is defined and added commands to it 
-2. Add a function to initialize AI provider in `commit.go`
-3. Implement real-time graph updates and broadcasting messages to all connections in `graph.go`. 
+## [0.1.0] - 2024-01-16
 
-🎉 Happy coding! 
-```
-
-Let me know if this works for you or if you need further assistance.
+### Added
+- Initial project structure
+- Basic command framework
+- Documentation templates
