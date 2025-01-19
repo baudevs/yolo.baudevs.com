@@ -110,9 +110,9 @@ MIT © [BauDevs](https://baudevs.com)
 
 ---
 
-Built with 💥, bad jokes, and too much caffeine by the BauDevs team and Monoverse. Special shoutouts to:
+Built with 💥, too much caffeine and lots of chaos (you wanted love?), by the BauDevs team and Monoverse. Special shoutouts to:
 
-- [juanda](https://github.com/baudevs.social)
-- [storres3rd](https://github.com/storres3rd/playlistsource)
-
+- [BauDevs](https://baudevs.social)
+- [storres3rd](https://github.com/storres3rd)
+- [Monoverse](https://monoverse.com)
 YOLO responsibly! 🎉
