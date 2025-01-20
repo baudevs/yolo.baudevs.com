@@ -1,36 +1,21 @@
 package commands
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
-
 	"github.com/baudevs/yolo.baudevs.com/internal/ai"
 	"github.com/baudevs/yolo.baudevs.com/internal/git"
+	"github.com/baudevs/yolo.baudevs.com/internal/models"
 	"github.com/spf13/cobra"
 )
 
-type CommitMessage struct {
-	Type        string   `json:"type"`
-	Scope       string   `json:"scope,omitempty"`
-	Subject     string   `json:"subject"`
-	Body        string   `json:"body,omitempty"`
-	Breaking    bool     `json:"breaking,omitempty"`
-	IssueRefs   []string `json:"issue_refs,omitempty"`
-	CoAuthors   []string `json:"co_authors,omitempty"`
-}
 
-type CommitOptions struct {
-	NoSync bool
-	Force  bool
-}
 
 func CommitCmd() *cobra.Command {
-	opts := &CommitOptions{}
+	opts := &models.CommitOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "commit",
@@ -52,7 +37,7 @@ and sync with remote repository. The AI will analyze your changes and:
 	return cmd
 }
 
-func runCommit(opts *CommitOptions) error {
+func runCommit(opts *models.CommitOptions) error {
 	// Get working directory
 	wd, err := os.Getwd()
 	if err != nil {
@@ -75,29 +60,40 @@ func runCommit(opts *CommitOptions) error {
 		return handleError("Failed to get changes", err, "git_changes")
 	}
 
+	// Load AI configuration
+	config, err := ai.LoadConfig()
+	if err != nil {
+		return handleError("Failed to load AI configuration", err, "ai_config")
+	}
+
+	// Get API key from configuration
+	apiKey := config.GetAPIKey(config.DefaultProvider)
+	if apiKey == "" {
+		return fmt.Errorf("OpenAI API key not found. Please run 'yolo ai configure' first")
+	}
+
 	// Initialize AI providers
-	commitAI, err := ai.NewCommitAI(os.Getenv("OPENAI_API_KEY"))
+	commitAI, err := ai.NewCommitAI(apiKey)
 	if err != nil {
 		return handleError("Failed to initialize AI", err, "ai_init")
 	}
 
-	errorAnalyzer := ai.NewErrorAnalyzer(os.Getenv("OPENAI_API_KEY"))
+	errorAnalyzer := ai.NewErrorAnalyzer(apiKey)
 
 	// Generate commit message
 	fmt.Println("🤖 Generating commit message...")
-	message, err := commitAI.GenerateCommitMessage(changes)
+	message,structuredMsg, err := commitAI.GenerateCommitMessage(changes)
 	if err != nil {
 		return handleError("Failed to generate commit message", err, "ai_message")
 	}
-
+	// use the structured message response
+	commitMsg := structuredMsg
+	
 	// Parse the JSON response
-	var commitMsg CommitMessage
-	if err := json.Unmarshal([]byte(message), &commitMsg); err != nil {
+	/* if err := json.Unmarshal([]byte(message), &commitMsg); err != nil {
+		fmt.Printf("Failed to parse JSON: %v\n", err)
 		return handleError("Failed to parse commit message", err, "ai_parse")
-	}
-
-	// Format the conventional commit message
-	formattedMessage := formatCommitMessage(commitMsg)
+	}  */
 
 	// Stage changes
 	fmt.Println("📦 Staging changes...")
@@ -107,7 +103,7 @@ func runCommit(opts *CommitOptions) error {
 
 	// Create commit
 	fmt.Println("💾 Creating commit...")
-	if err := gitOps.Commit(formattedMessage); err != nil {
+	if err := gitOps.Commit(message); err != nil {
 		return handleError("Failed to create commit", err, "git_commit")
 	}
 
@@ -141,7 +137,7 @@ func runCommit(opts *CommitOptions) error {
 
 	// Update YOLO documentation
 	fmt.Println("📝 Updating the project story...")
-	if err := updateDocs(formattedMessage); err != nil {
+	if err := updateDocs(commitMsg); err != nil {
 		return handleError("Failed to update docs", err, "docs_update")
 	}
 
@@ -151,13 +147,13 @@ func runCommit(opts *CommitOptions) error {
 	}
 
 	// Create documentation commit
-	docMessage := fmt.Sprintf("docs: update YOLO documentation\n\n%s", formattedMessage)
+	docMessage := fmt.Sprintf("docs: update YOLO documentation\n\n%s", formatCommitMessage(commitMsg))
 	if err := gitOps.Commit(docMessage); err != nil {
 		return handleError("Failed to create doc commit", err, "git_commit_docs")
 	}
 
 	fmt.Println("\n✅ All done! Here's what happened:")
-	fmt.Printf("1. Created commit: %s\n", formattedMessage)
+	fmt.Printf("1. Created commit: %s\n", formatCommitMessage(commitMsg))
 	if !opts.NoSync && gitOps.HasRemote() {
 		fmt.Println("2. Synced with remote repository")
 	}
@@ -165,7 +161,7 @@ func runCommit(opts *CommitOptions) error {
 	return nil
 }
 
-func formatCommitMessage(msg CommitMessage) string {
+func formatCommitMessage(msg models.CommitMessage) string {
 	// Start with type and scope
 	result := msg.Type
 	if msg.Scope != "" {
@@ -194,23 +190,9 @@ func formatCommitMessage(msg CommitMessage) string {
 	return result
 }
 
-func updateDocs(message string) error {
-	// Parse commit message for type, scope, and description
-	parts := strings.SplitN(message, ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid commit message format")
-	}
-
-	typeScope := strings.TrimSpace(parts[0])
-	description := strings.TrimSpace(parts[1])
-
-	// Extract type and scope
-	typeParts := strings.Split(typeScope, "(")
-	commitType := typeParts[0]
-	scope := ""
-	if len(typeParts) > 1 {
-		scope = strings.TrimRight(typeParts[1], ")")
-	}
+func updateDocs(msg models.CommitMessage) error {
+	// Format the conventional commit message
+	formattedMessage := formatCommitMessage(msg)
 
 	// Update HISTORY.yml
 	entry := fmt.Sprintf(`
@@ -218,7 +200,7 @@ func updateDocs(message string) error {
     scope: %s
     subject: %q
     body: %q
-`, commitType, scope, description, message)
+`, msg.Type, msg.Scope, msg.Subject, formattedMessage)
 
 	historyFile := "HISTORY.yml"
 	history, err := os.OpenFile(historyFile, os.O_APPEND|os.O_WRONLY, 0644)
@@ -233,7 +215,7 @@ func updateDocs(message string) error {
 
 	// Update CHANGELOG.md
 	date := time.Now().Format("2006-01-02")
-	changelogEntry := fmt.Sprintf("\n### %s\n- %s: %s", date, commitType, description)
+	changelogEntry := fmt.Sprintf("\n### %s\n- %s: %s", date, msg.Type, msg.Subject)
 
 	changelogFile := "CHANGELOG.md"
 	changelog, err := os.OpenFile(changelogFile, os.O_APPEND|os.O_WRONLY, 0644)
@@ -247,8 +229,20 @@ func updateDocs(message string) error {
 }
 
 func handleError(context string, err error, errorType string) error {
+	// Load AI configuration
+	config, configErr := ai.LoadConfig()
+	if configErr != nil {
+		return fmt.Errorf("%s: %w (failed to load AI config: %v)", context, err, configErr)
+	}
+
+	// Get API key from configuration
+	apiKey := config.GetAPIKey(config.DefaultProvider)
+	if apiKey == "" {
+		return fmt.Errorf("%s: %w (OpenAI API key not found, run 'yolo ai configure' first)", context, err)
+	}
+
 	// Initialize error analyzer
-	errorAnalyzer := ai.NewErrorAnalyzer(os.Getenv("OPENAI_API_KEY"))
+	errorAnalyzer := ai.NewErrorAnalyzer(apiKey)
 	
 	// Get AI analysis of the error
 	analysis, analyzeErr := errorAnalyzer.AnalyzeError(err, context)

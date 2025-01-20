@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -68,7 +69,84 @@ func promptCopyCmd(use string, short string, promptSelector func(Prompts) string
 }
 
 func loadPrompts() (*Prompts, error) {
-	data, err := os.ReadFile("yolo/settings/prompts.yml")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	configDir := filepath.Join(home, ".config", "yolo")
+	promptsFile := filepath.Join(configDir, "methodology_prompts.yml")
+
+	// Create config directory if it doesn't exist
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	// If file doesn't exist, create it with default prompts
+	if _, err := os.Stat(promptsFile); os.IsNotExist(err) {
+		defaultPrompts := Prompts{
+			StandardDocumentation: `# Standard Documentation Prompt
+Write documentation that follows YOLO methodology:
+- Clear and concise explanations
+- Code examples where relevant
+- Usage instructions
+- Common pitfalls and solutions`,
+			UpdateChangelog: `# Changelog Update Prompt
+Update the changelog following YOLO methodology:
+- Group changes by type (Added, Changed, Fixed)
+- Include version numbers
+- Add date stamps
+- Reference relevant issues/PRs`,
+			UpdateReadme: `# README Update Prompt
+Update the README following YOLO methodology:
+- Project overview and purpose
+- Installation instructions
+- Usage examples
+- Configuration options
+- Contributing guidelines`,
+			EpicDocumentation: `# Epic Documentation Prompt
+Document epics following YOLO methodology:
+- High-level overview
+- Business value
+- Success criteria
+- Dependencies and risks
+- Timeline and milestones`,
+			FeatureDocumentation: `# Feature Documentation Prompt
+Document features following YOLO methodology:
+- Feature description
+- Technical requirements
+- Implementation details
+- Testing strategy
+- Release notes`,
+			TaskDocumentation: `# Task Documentation Prompt
+Document tasks following YOLO methodology:
+- Clear objectives
+- Implementation steps
+- Acceptance criteria
+- Dependencies
+- Time estimates`,
+			UpdateHistory: `# History Update Prompt
+Update history following YOLO methodology:
+- Chronological order
+- Key milestones
+- Major decisions
+- Lessons learned`,
+		}
+
+		data, err := yaml.Marshal(defaultPrompts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal default prompts: %w", err)
+		}
+
+		if err := os.WriteFile(promptsFile, data, 0644); err != nil {
+			return nil, fmt.Errorf("failed to write default prompts: %w", err)
+		}
+
+		return &defaultPrompts, nil
+	}
+
+	// Read existing prompts
+	data, err := os.ReadFile(promptsFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read prompts file: %w", err)
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/commands"
@@ -37,6 +36,7 @@ func init() {
 	rootCmd.AddCommand(commands.ShortcutsCmd)
 	rootCmd.AddCommand(commands.ExplainCmd())
 	rootCmd.AddCommand(commands.AICmd())
+	rootCmd.AddCommand(commands.InitMessagePromptsCmd())
 }
 
 func main() {

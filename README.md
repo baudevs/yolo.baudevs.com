@@ -6,7 +6,7 @@ YOLO (You Only Live Once) is your cheeky project management sidekick. Choose you
 
 - 🎯 **Project Organization**: Keep your chaos in check with a clean, standardized structure.
 - 🤖 **AI Love**: Works seamlessly with LLMs. Yes, even the moody ones.
-- 📊 **Visual Progress**: 3D visualizations that’ll make you go “Oooooh!”
+- 📊 **Visual Progress**: 3D visualizations that'll make you go "Oooooh!"
 - 🚀 **Blazing Fast**: Because who has time to wait? Certainly not YOLO.
 - 🔄 **Git Smarts**: Effortlessly manage commits like a version control wizard.
 
@@ -38,12 +38,27 @@ curl -fsSL https://raw.githubusercontent.com/baudevs/yolo.baudevs.com/main/insta
 ```
 
 The installer will:
-- Let you choose YOLO's personality
-- Install Git if needed
-- Install Go if needed
-- Clone the repository
-- Build and install YOLO CLI
-- Guide you through the setup
+- Detect if YOLO is already installed
+- Preserve your existing configuration and preferences
+- Update or install components as needed
+- Guide you through any additional setup
+
+### Update Flow
+
+When updating an existing YOLO installation:
+1. Your personality settings are preserved
+2. Configuration files remain untouched
+3. Only the CLI binary is updated
+4. New features are seamlessly integrated
+
+### Fresh Installation
+
+For new installations, the installer will:
+1. Let you choose YOLO's personality
+2. Install Git if needed
+3. Install Go if needed
+4. Set up your configuration
+5. Guide you through initial setup
 
 ### Manual Installation
 
@@ -51,158 +66,135 @@ The installer will:
    ```bash
    # macOS
    brew install git go
-
+   
    # Ubuntu/Debian
-   sudo apt-get update && sudo apt-get install git golang-go
-
-   # Check installations
-   git --version
-   go version  # Should be 1.21 or later
+   sudo apt-get update
+   sudo apt-get install git golang-go
    ```
 
-2. **Build YOLO**
+2. **Clone & Build**
    ```bash
-   # Clone repository
    git clone https://github.com/baudevs/yolo.baudevs.com.git
    cd yolo.baudevs.com
-
-   # Build and install
-   make
-   make install
+   go build -o yolo cmd/yolo/main.go
    ```
 
-3. **Configure YOLO**
+3. **Install**
    ```bash
-   # Choose personality level and initialize
-   yolo init
-
-   # Configure AI provider
-   yolo ai configure -p openai -k your_api_key
+   sudo mv yolo /usr/local/bin/
    ```
 
-### Changing Personality
+## 🎨 Configuration
 
-You can change YOLO's personality at any time:
+### Personality Setup
+
+Your personality choice is stored in `~/.config/yolo/personality`:
+```
+1 = Clean & Nerdy
+2 = Mildly Eccentric
+3 = Unhinged & Funny
+```
+
+To change personality:
+```bash
+echo "2" > ~/.config/yolo/personality  # For Mildly Eccentric
+source ~/.zshenv  # Or your shell's config file
+```
+
+### AI Configuration
+
+Configure your AI provider:
+```bash
+yolo ai configure -p openai -k your_api_key
+```
+
+## 🚀 Getting Started
+
+### First Time Setup
 
 ```bash
-# Via environment variable
-export YOLO_PERSONALITY=1  # Clean & Nerdy (default)
-export YOLO_PERSONALITY=2  # Mildly Eccentric
-export YOLO_PERSONALITY=3  # Unhinged & Funny
+# Initialize YOLO in your project
+yolo init
 
-# Or during initialization
-yolo init --personality 2
-```
-
-## 📚 Project Structure
-
-YOLO sets up your project like a boss. Here’s what it’ll look like:
-
-```
-your-project/
-├── CHANGELOG.md      # Project changes and versions
-├── HISTORY.yml       # Complete historical record
-├── README.md         # Project overview
-├── STRATEGY.md       # Project strategy and goals
-├── WISHES.md         # Future improvements
-├── LLM_INSTRUCTIONS.md  # AI/LLM guidelines
-└── yolo/
-    ├── epics/       # Strategic initiatives
-    ├── features/    # Feature specifications
-    ├── tasks/       # Implementation tasks
-    ├── relationships/ # Cross-component links
-    └── settings/    # Project configuration
-```
-
----
-
-## 🎮 YOLO Commands
-
-YOLO CLI isn’t just a pretty face. Here’s what it can do:
-
-- `yolo init`: Set up a new project adventure.
-- `yolo prompt`: Get AI-powered assistance (because thinking is overrated).
-- `yolo graph`: Visualize project relationships like a boss.
-- `yolo commit`: Create AI-powered conventional commits with style.
-- `yolo shortcuts`: Configure global shortcuts (WIP).
-- `yolo ai`: Manage AI providers and settings:
-  - `yolo ai configure`: Set up your AI providers
-  - `yolo ai list`: View configured providers
-  - `yolo ai test`: Test your AI setup
-
-### 🤖 AI Configuration
-
-YOLO supports multiple AI providers to power its features:
-
-```bash
-# Configure OpenAI
+# Configure AI features
 yolo ai configure -p openai -k your_api_key
 
-# List providers
-yolo ai list
-
-# Test configuration
-yolo ai test
+# Start the visualization server
+yolo graph
 ```
 
-Supported providers:
-- OpenAI (default)
-- Anthropic Claude
-- Mistral AI
-
-### 🎯 Smart Commit
-
-YOLO's commit command is now powered by AI:
+### Daily Usage
 
 ```bash
-# Create an AI-powered commit
+# Create a new feature
+yolo new feature "Add awesome stuff"
+
+# Let AI analyze your changes
 yolo commit
 
-# Skip remote sync
-yolo commit --no-sync
-
-# Force commit with warnings
-yolo commit --force
+# View your progress
+yolo graph
 ```
 
-Features:
-- AI-generated conventional commits
-- Automatic staging
-- Remote repository syncing
-- Smart error handling with AI assistance
+## 🎮 Commands
 
----
+### Core Commands
+- `init`: Initialize YOLO in your project
+- `new`: Create new features or tasks
+- `commit`: Create smart commits with AI
+- `graph`: Launch the visualization server
 
-## ⚙️ Development Setup
+### AI Commands
+- `ai configure`: Set up AI providers
+- `ai test`: Test your AI configuration
 
-For those brave enough to tinker under the hood:
+### Utility Commands
+- `version`: Show YOLO version
+- `update`: Update YOLO CLI
+- `help`: Show help message
 
-```bash
-# Clone the YOLO repository
-git clone https://github.com/baudevs/yolo-cli
-cd yolo-cli
+## 🎯 Development
 
-# Install dependencies
-go mod download
+### Requirements
+- Go 1.21 or later
+- Git
+- An OpenAI API key (for AI features)
 
-# Build the project
-go build -o bin/yolo cmd/yolo/main.go
+### Local Development
 
-# Run tests
-go test ./...
-```
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/baudevs/yolo.baudevs.com.git
+   cd yolo.baudevs.com
+   ```
 
----
+2. Install dependencies:
+   ```bash
+   go mod download
+   go mod tidy
+   ```
+
+3. Build:
+   ```bash
+   go build -o yolo cmd/yolo/main.go
+   ```
+
+4. Run tests:
+   ```bash
+   go test ./...
+   ```
 
 ## 🤝 Contributing
 
-Got ideas? Found bugs? Wanna show off your coding chops? Check out our [Contributing Guide](CONTRIBUTING.md). We welcome PRs, memes, and bribes (just kidding, kind of). 🤪
+1. Fork it
+2. Create your feature branch (`git checkout -b feature/amazing`)
+3. Commit your changes (`yolo commit`)
+4. Push to the branch (`git push origin feature/amazing`)
+5. Create a new Pull Request
 
----
+## 📝 License
 
-## 📜 License
-
-MIT © [BauDevs](https://baudevs.com)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -211,4 +203,3 @@ Built with 💥, too much caffeine and lots of chaos (you wanted love?), by the 
 - [BauDevs](https://baudevs.social)
 - [storres3rd](https://github.com/storres3rd)
 - [Monoverse](https://monoverse.com)
-YOLO responsibly! 🎉

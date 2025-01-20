@@ -25,7 +25,7 @@ func NewErrorAnalyzer(apiKey string) *ErrorAnalyzer {
 	}
 }
 
-func (ea *ErrorAnalyzer) AnalyzeError(err error, context string) (*ErrorAnalysis, error) {
+func (ea *ErrorAnalyzer) AnalyzeError(err error, contextStr string) (*ErrorAnalysis, error) {
 	prompt := fmt.Sprintf(`Analyze the following error in the context of a Git operation and provide a helpful explanation and solutions.
 Context: %s
 Error: %v
@@ -35,7 +35,7 @@ Respond with a JSON object containing:
   "problem": "brief description of the issue",
   "explanation": "user-friendly explanation of what went wrong",
   "solutions": ["array of step-by-step solutions"]
-}`, context, err)
+}`, contextStr, err)
 
 	resp, err := ea.client.CreateChatCompletion(
 		context.Background(),
@@ -65,9 +65,9 @@ Respond with a JSON object containing:
 func (ea *ErrorAnalyzer) FormatAnalysis(analysis *ErrorAnalysis) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("🔍 Problem: %s\n\n", analysis.Problem))
-	sb.WriteString(fmt.Sprintf("📝 Explanation: %s\n\n", analysis.Explanation))
-	sb.WriteString("💡 Solutions:\n")
+	sb.WriteString(fmt.Sprintf(" Problem: %s\n\n", analysis.Problem))
+	sb.WriteString(fmt.Sprintf(" Explanation: %s\n\n", analysis.Explanation))
+	sb.WriteString(" Solutions:\n")
 	for i, solution := range analysis.Solutions {
 		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, solution))
 	}

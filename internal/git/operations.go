@@ -17,39 +17,57 @@ func NewGitOps(workingDir string) *GitOps {
 }
 
 func (g *GitOps) GetChanges() (string, error) {
-	// Get staged changes
-	staged, err := g.runGit("diff", "--cached")
+	// Get summary of changes
+	summary, err := g.runGit("diff", "--compact-summary")
 	if err != nil {
-		return "", fmt.Errorf("failed to get staged changes: %w", err)
+		return "", fmt.Errorf("failed to get changes summary: %w", err)
 	}
 
-	// Get unstaged changes
-	unstaged, err := g.runGit("diff")
+	// Get staged changes summary
+	stagedSummary, err := g.runGit("diff", "--cached", "--compact-summary")
 	if err != nil {
-		return "", fmt.Errorf("failed to get unstaged changes: %w", err)
+		return "", fmt.Errorf("failed to get staged changes summary: %w", err)
 	}
 
-	// Get untracked files
+	// Get untracked files (just names)
 	untracked, err := g.runGit("ls-files", "--others", "--exclude-standard")
 	if err != nil {
 		return "", fmt.Errorf("failed to get untracked files: %w", err)
 	}
 
+	// Get a short diff for context (limited to first few lines)
+	shortDiff, err := g.runGit("diff", "--unified=3")
+	if err != nil {
+		return "", fmt.Errorf("failed to get short diff: %w", err)
+	}
+
+	// Truncate the diff if it's too long
+	diffLines := strings.Split(shortDiff, "\n")
+	if len(diffLines) > 50 {
+		diffLines = diffLines[:50]
+		diffLines = append(diffLines, "... (truncated)")
+	}
+	shortDiff = strings.Join(diffLines, "\n")
+
 	var changes strings.Builder
-	if staged != "" {
+	if stagedSummary != "" {
 		changes.WriteString("Staged changes:\n")
-		changes.WriteString(staged)
+		changes.WriteString(stagedSummary)
 		changes.WriteString("\n")
 	}
-	if unstaged != "" {
+	if summary != "" {
 		changes.WriteString("Unstaged changes:\n")
-		changes.WriteString(unstaged)
+		changes.WriteString(summary)
 		changes.WriteString("\n")
 	}
 	if untracked != "" {
 		changes.WriteString("Untracked files:\n")
 		changes.WriteString(untracked)
 		changes.WriteString("\n")
+	}
+	if shortDiff != "" {
+		changes.WriteString("\nChanges preview:\n")
+		changes.WriteString(shortDiff)
 	}
 
 	return changes.String(), nil

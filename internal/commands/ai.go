@@ -2,8 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/ai"
 	"github.com/spf13/cobra"
@@ -28,53 +26,53 @@ and customize their settings.`,
 }
 
 func aiConfigureCmd() *cobra.Command {
-	var provider string
-	var apiKey string
-	var model string
-
 	cmd := &cobra.Command{
 		Use:   "configure",
-		Short: "Configure an AI provider",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Load config
+		Short: "Configure AI provider settings",
+		Long:  "Configure settings for AI providers like OpenAI",
+		Run: func(cmd *cobra.Command, args []string) {
+			provider, _ := cmd.Flags().GetString("provider")
+			apiKey, _ := cmd.Flags().GetString("key")
+			model, _ := cmd.Flags().GetString("model")
+
+			if provider == "" || apiKey == "" {
+				fmt.Println("Please provide both provider and API key")
+				return
+			}
+
+			// Load existing config or create new one
 			config, err := ai.LoadConfig()
 			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
+				fmt.Printf("Failed to load config: %v\n", err)
+				return
 			}
 
-			// Get provider
-			p, ok := config.Providers[provider]
-			if !ok {
-				return fmt.Errorf("unknown provider: %s", provider)
+			// Update provider configuration
+			config.Providers[provider] = ai.Provider{
+				Name:    provider,
+				APIKey:  apiKey,
+				Model:   model,
+				Enabled: true,
 			}
 
-			// Update provider settings
-			if apiKey != "" {
-				p.APIKey = apiKey
+			// Set as default if it's the only provider
+			if len(config.Providers) == 1 {
+				config.DefaultProvider = provider
 			}
-			if model != "" {
-				p.Model = model
-			}
-			p.Enabled = true
 
-			config.Providers[provider] = p
-
-			// Save config
+			// Save configuration
 			if err := ai.SaveConfig(config); err != nil {
-				return fmt.Errorf("failed to save config: %w", err)
+				fmt.Printf("Failed to save configuration: %v\n", err)
+				return
 			}
 
-			fmt.Printf("✅ Configured %s provider\n", p.Name)
-			return nil
+			fmt.Printf("Successfully configured %s as AI provider\n", provider)
 		},
 	}
 
-	cmd.Flags().StringVarP(&provider, "provider", "p", "", "AI provider (openai, anthropic, mistral)")
-	cmd.Flags().StringVarP(&apiKey, "api-key", "k", "", "API key for the provider")
-	cmd.Flags().StringVarP(&model, "model", "m", "", "Model to use (e.g., gpt-3.5-turbo)")
-
-	cmd.MarkFlagRequired("provider")
-
+	cmd.Flags().StringP("provider", "p", "", "AI provider (e.g., openai)")
+	cmd.Flags().StringP("key", "k", "", "API key for the provider")
+	cmd.Flags().StringP("model", "m", "gpt-3.5-turbo", "Model to use (e.g., gpt-3.5-turbo)")
 	return cmd
 }
 
@@ -92,7 +90,7 @@ func aiListCmd() *cobra.Command {
 			fmt.Println("🤖 Configured AI Providers:")
 			fmt.Printf("\nDefault provider: %s\n\n", config.DefaultProvider)
 
-			for name, p := range config.Providers {
+			for _, p := range config.Providers {
 				status := "❌ Disabled"
 				if p.Enabled {
 					status = "✅ Enabled"
@@ -139,7 +137,7 @@ func aiTestCmd() *cobra.Command {
 			}
 
 			fmt.Println("🧪 Testing AI provider...")
-			msg, err := commitAI.GenerateCommitMessage("test: add sample file for testing")
+			msg, _, err := commitAI.GenerateCommitMessage("test: add sample file for testing")
 			if err != nil {
 				return fmt.Errorf("test failed: %w", err)
 			}

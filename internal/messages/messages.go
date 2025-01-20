@@ -3,7 +3,10 @@ package messages
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // PersonalityLevel defines the tone of messages
@@ -22,13 +25,13 @@ var currentLevel PersonalityLevel = NerdyClean
 
 // Message represents a message with variants for each personality level
 type Message struct {
-	NerdyClean    string
-	MildlyRude    string
-	UnhingedFunny string
+	NerdyClean    string `yaml:"nerdy_clean"`
+	MildlyRude    string `yaml:"mildly_rude"`
+	UnhingedFunny string `yaml:"unhinged_funny"`
 }
 
-// Messages catalog
-var Messages = map[string]Message{
+// DefaultMessages contains the default message catalog
+var DefaultMessages = map[string]Message{
 	"welcome": {
 		NerdyClean:    "🚀 Welcome to YOLO CLI - Your Optimal Life Organizer!",
 		MildlyRude:    "🤘 Sup nerd! Welcome to YOLO - Let's break some stuff!",
@@ -49,59 +52,78 @@ var Messages = map[string]Message{
 		MildlyRude:    "Need Git because apparently you live in 2025... Installing!",
 		UnhingedFunny: "Installing Git cuz we ain't savages! Time to get version controlled! 🎮",
 	},
-	"install_success": {
-		NerdyClean:    "🎉 Installation complete! Your development environment has been successfully optimized!",
-		MildlyRude:    "Done! Try not to break anything important... or do, I'm not your boss! 😏",
-		UnhingedFunny: "BOOM! We're in business! Time to write some legendary code, you beautiful disaster! 🚀",
+	"install_done": {
+		NerdyClean:    "Installation complete! Your development environment has been optimized.",
+		MildlyRude:    "Done! Try not to break anything important... or do, I'm not your boss!",
+		UnhingedFunny: "BOOM! We're in business! Time to write some legendary code, you beautiful disaster!",
 	},
-	"init_project": {
-		NerdyClean:    "Initializing project structure with mathematical precision...",
-		MildlyRude:    "Making folders and stuff. Try to keep them organized this time...",
-		UnhingedFunny: "Time to birth a new project! Push! 🤰",
+	"init_start": {
+		NerdyClean:    "Initializing YOLO project structure with mathematical precision...",
+		MildlyRude:    "Let's get this party started! Time to YOLO-ify your project...",
+		UnhingedFunny: "YOLO MODE ENGAGED! Prepare for project transformation! 🚀",
+	},
+	"init_done": {
+		NerdyClean:    "Project initialized successfully! Ready for optimal productivity.",
+		MildlyRude:    "Project's all set up! Don't mess it up... too much.",
+		UnhingedFunny: "BOOM! Your project just got YOLO'd! Let the chaos begin! 🎉",
 	},
 	"commit_start": {
-		NerdyClean:    "Analyzing changes with quantum precision...",
+		NerdyClean:    "Analyzing changes with AI precision...",
 		MildlyRude:    "Let's see what mess you've made this time...",
-		UnhingedFunny: "Time to immortalize your code crimes! What did you do!? 👮‍♂️",
+		UnhingedFunny: "Time to let the AI judge your code! No pressure! 😈",
 	},
-	"commit_success": {
-		NerdyClean:    "Changes committed successfully! Your code is now part of history.",
-		MildlyRude:    "Alright, I've hidden your changes in the repo. Happy now?",
-		UnhingedFunny: "Your code is now officially in witness protection! 🥸",
+	"commit_done": {
+		NerdyClean:    "Changes committed successfully! Your code is now immortalized.",
+		MildlyRude:    "Alright, your changes are in! Hope you tested them... maybe.",
+		UnhingedFunny: "YEET! Your code is now part of history! No takebacks! 🚀",
 	},
-	"error_generic": {
-		NerdyClean:    "Oops! We've encountered an unexpected quantum fluctuation...",
-		MildlyRude:    "Well, that didn't work. Want to try again or...?",
-		UnhingedFunny: "FAIL! 💩 Everything's broken! But hey, that's job security!",
-	},
-	"error_git": {
-		NerdyClean:    "Git seems to be having an existential crisis...",
-		MildlyRude:    "Git is being Git again. You know how it is...",
-		UnhingedFunny: "Git just went YOLO and not in a good way! 🎢",
-	},
-	"error_ai": {
-		NerdyClean:    "The AI is currently contemplating the meaning of life...",
-		MildlyRude:    "AI machine broke. Have you tried turning it off and on again?",
-		UnhingedFunny: "The AI is having a mental breakdown! Time for therapy! 🛋️",
-	},
+}
+
+// Messages catalog - will be loaded from config or defaults
+var Messages = make(map[string]Message)
+
+func init() {
+	// Load custom prompts if they exist, otherwise use defaults
+	loadCustomPrompts()
+}
+
+// loadCustomPrompts loads custom prompts from the config file
+func loadCustomPrompts() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		Messages = DefaultMessages
+		return
+	}
+
+	promptsFile := filepath.Join(home, ".config", "yolo", "prompts.yml")
+	data, err := os.ReadFile(promptsFile)
+	if err != nil {
+		Messages = DefaultMessages
+		return
+	}
+
+	var prompts struct {
+		Messages map[string]Message `yaml:"messages"`
+	}
+	if err := yaml.Unmarshal(data, &prompts); err != nil {
+		Messages = DefaultMessages
+		return
+	}
+
+	// Use custom prompts, falling back to defaults for missing messages
+	Messages = DefaultMessages
+	for key, msg := range prompts.Messages {
+		Messages[key] = msg
+	}
 }
 
 // SetPersonality sets the global personality level
 func SetPersonality(level PersonalityLevel) {
-	if level < NerdyClean || level > UnhingedFunny {
-		level = NerdyClean
-	}
 	currentLevel = level
-	os.Setenv("YOLO_PERSONALITY", fmt.Sprintf("%d", level))
 }
 
 // GetPersonality returns the current personality level
 func GetPersonality() PersonalityLevel {
-	if level := os.Getenv("YOLO_PERSONALITY"); level != "" {
-		if l, err := fmt.Sscanf(level, "%d", &currentLevel); err == nil && l > 0 {
-			return currentLevel
-		}
-	}
 	return currentLevel
 }
 
@@ -109,10 +131,10 @@ func GetPersonality() PersonalityLevel {
 func Get(key string) string {
 	msg, ok := Messages[key]
 	if !ok {
-		return "Message not found"
+		return fmt.Sprintf("Message not found: %s", key)
 	}
 
-	switch GetPersonality() {
+	switch currentLevel {
 	case MildlyRude:
 		return msg.MildlyRude
 	case UnhingedFunny:
@@ -133,8 +155,7 @@ func SelectPersonality() PersonalityLevel {
 	fmt.Print("Enter your choice (1-3) [default: 1]: ")
 	fmt.Scanln(&choice)
 
-	choice = strings.TrimSpace(choice)
-	switch choice {
+	switch strings.TrimSpace(choice) {
 	case "2":
 		return MildlyRude
 	case "3":

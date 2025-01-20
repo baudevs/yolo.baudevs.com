@@ -5,25 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
+	"github.com/baudevs/yolo.baudevs.com/internal/models"
 	"github.com/sashabaranov/go-openai"
 )
 
-// CommitMessage represents the structured output from AI
-type CommitMessage struct {
-	Type      string   `json:"type"`
-	Scope     string   `json:"scope,omitempty"`
-	Subject   string   `json:"subject"`
-	Body      string   `json:"body,omitempty"`
-	Breaking  bool     `json:"breaking,omitempty"`
-	IssueRefs []string `json:"issue_refs,omitempty"`
-	CoAuthors []string `json:"co_authors,omitempty"`
-}
 
 // CommitAI handles AI-powered commit message generation
 type CommitAI struct {
 	client *openai.Client
 }
+
 
 // NewCommitAI creates a new CommitAI instance
 func NewCommitAI(apiKey string) (*CommitAI, error) {
@@ -37,8 +28,8 @@ func NewCommitAI(apiKey string) (*CommitAI, error) {
 }
 
 // GenerateCommitMessage generates a commit message based on the changes
-func (ai *CommitAI) GenerateCommitMessage(changes string) (string, error) {
-	prompt := `Analyze the following Git changes and generate a conventional commit message in JSON format.
+func (ai *CommitAI) GenerateCommitMessage(changes string) (string, models.CommitMessage, error) {
+    prompt := `Analyze the following Git changes and generate a conventional commit message in JSON format.
 
 Follow these rules:
 1. Use semantic commit types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
@@ -64,35 +55,48 @@ The response must be a valid JSON object with this structure:
 Changes to analyze:
 ` + changes
 
-	resp, err := ai.client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: prompt,
-				},
-			},
-			Temperature: 0.3, // Lower temperature for more consistent output
-		},
-	)
+    resp, err := ai.client.CreateChatCompletion(
+        context.Background(),
+        openai.ChatCompletionRequest{
+            Model: openai.GPT3Dot5Turbo,
+            Messages: []openai.ChatCompletionMessage{
+                {
+                    Role:    openai.ChatMessageRoleUser,
+                    Content: prompt,
+                },
+            },
+            Temperature: 0.3,
+        },
+    )
 
-	if err != nil {
-		return "", fmt.Errorf("failed to generate commit message: %w", err)
-	}
+    if err != nil {
+        return "", models.CommitMessage{}, fmt.Errorf("failed to generate commit message: %w", err)
+    }
 
-	// Validate the response is valid JSON
-	var msg CommitMessage
-	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &msg); err != nil {
-		return "", fmt.Errorf("invalid AI response format: %w", err)
-	}
+    content := strings.TrimSpace(resp.Choices[0].Message.Content)
 
-	return FormatCommitMessage(msg), nil
+    fmt.Printf("📝 Raw AI response:\n%s\n", content)
+
+    if !strings.HasPrefix(content, "{") {
+        content = "{" + content
+        fmt.Println("⚠️ Added opening brace")
+    }
+    if !strings.HasSuffix(content, "}") {
+        content = content + "}"
+        fmt.Println("⚠️ Added closing brace")
+    }
+
+    var msg models.CommitMessage
+    if err := json.Unmarshal([]byte(content), &msg); err != nil {
+        return "", models.CommitMessage{}, fmt.Errorf("invalid AI response format: %w\nResponse: %s", err, content)
+    }
+
+    formattedMessage := FormatCommitMessage(msg)
+    return formattedMessage, msg, nil
 }
 
 // FormatCommitMessage formats a CommitMessage into a conventional commit string
-func FormatCommitMessage(msg CommitMessage) string {
+func FormatCommitMessage(msg models.CommitMessage) string {
 	var parts []string
 
 	// Add type
