@@ -1,4 +1,4 @@
-module github.com/baudevs/yolo-cli
+module github.com/baudevs/yolo.baudevs.com
 
 go 1.22.0
 

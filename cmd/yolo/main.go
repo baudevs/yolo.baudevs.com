@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/baudevs/yolo-cli/internal/commands"
+	"github.com/baudevs/yolo.baudevs.com/internal/commands"
 	"github.com/spf13/cobra"
 )
 

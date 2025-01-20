@@ -3,11 +3,10 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strings"
-	"time"
+	"path/filepath"
 
-	"github.com/baudevs/yolo-cli/internal/core"
-	"github.com/baudevs/yolo-cli/internal/templates"
+	"github.com/baudevs/yolo.baudevs.com/internal/core"
+	"github.com/baudevs/yolo.baudevs.com/internal/templates"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"os/exec"
-	"path/filepath"
 )
 
 var (

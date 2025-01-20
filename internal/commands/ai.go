@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 
-	"github.com/baudevs/yolo/internal/ai"
+	"github.com/baudevs/yolo.baudevs.com/internal/ai"
 	"github.com/spf13/cobra"
 )
 

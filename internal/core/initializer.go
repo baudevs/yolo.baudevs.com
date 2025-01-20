@@ -3,10 +3,11 @@ package core
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/baudevs/yolo-cli/internal/templates"
+	"github.com/baudevs/yolo.baudevs.com/internal/templates"
 	"github.com/fatih/color"
 	"gopkg.in/yaml.v3"
 )

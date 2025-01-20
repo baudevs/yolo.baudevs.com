@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/baudevs/yolo-cli/internal/ai"
-	"github.com/baudevs/yolo-cli/internal/git"
+	"github.com/baudevs/yolo.baudevs.com/internal/ai"
+	"github.com/baudevs/yolo.baudevs.com/internal/git"
 	"github.com/spf13/cobra"
 )
 

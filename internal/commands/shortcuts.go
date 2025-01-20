@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
-	"github.com/baudevs/yolo-cli/internal/shortcuts"
+	"github.com/baudevs/yolo.baudevs.com/internal/shortcuts"
 	"github.com/spf13/cobra"
 )
 
