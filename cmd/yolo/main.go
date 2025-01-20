@@ -37,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(commands.ExplainCmd())
 	rootCmd.AddCommand(commands.AICmd())
 	rootCmd.AddCommand(commands.InitMessagePromptsCmd())
+	rootCmd.AddCommand(commands.AskCmd())
 }
 
 func main() {
