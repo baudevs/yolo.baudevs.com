@@ -12,7 +12,7 @@ import (
 
 // CommitAI handles AI-powered commit message generation
 type CommitAI struct {
-	client *openai.Client
+	client *Client
 }
 
 
@@ -22,8 +22,17 @@ func NewCommitAI(apiKey string) (*CommitAI, error) {
 		return nil, fmt.Errorf("OpenAI API key is required")
 	}
 
+	config := &Config{
+		DefaultProvider: "openai",
+		Providers: map[string]Provider{
+			"openai": {
+				APIKey: apiKey,
+			},
+		},
+	}
+
 	return &CommitAI{
-		client: openai.NewClient(apiKey),
+		client: NewClient(config),
 	}, nil
 }
 
@@ -55,28 +64,16 @@ The response must be a valid JSON object with this structure:
 Changes to analyze:
 ` + changes
 
-    resp, err := ai.client.CreateChatCompletion(
-        context.Background(),
-        openai.ChatCompletionRequest{
-            Model: openai.GPT3Dot5Turbo,
-            Messages: []openai.ChatCompletionMessage{
-                {
-                    Role:    openai.ChatMessageRoleUser,
-                    Content: prompt,
-                },
-            },
-            Temperature: 0.3,
-        },
-    )
-
+    content, err := ai.client.GetCompletion(prompt)
     if err != nil {
         return "", models.CommitMessage{}, fmt.Errorf("failed to generate commit message: %w", err)
     }
 
-    content := strings.TrimSpace(resp.Choices[0].Message.Content)
+    content = strings.TrimSpace(content)
 
     fmt.Printf("📝 Raw AI response:\n%s\n", content)
 
+    // If the response is not wrapped in curly braces, wrap it
     if !strings.HasPrefix(content, "{") {
         content = "{" + content
         fmt.Println("⚠️ Added opening brace")
