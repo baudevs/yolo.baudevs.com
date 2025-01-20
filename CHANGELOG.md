@@ -79,3 +79,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: add summary of changes functionality
 ### 2025-01-20
 - docs: update YOLO documentation
+### 2025-01-20
+- feat: add AI programming question command

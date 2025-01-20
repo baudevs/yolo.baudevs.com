@@ -120,3 +120,8 @@ migrations:
     scope: internal/commands
     subject: "add AI programming question command"
     body: "feat(internal/commands): add AI programming question command\n\nAdded a new 'ask' command that allows users to ask programming questions and get witty responses with 3 simple steps to solve them. The response style changes based on the user's selected personality level (NerdyClean, MildlyRude, or UnhingedFunny)."
+
+  - type: feat
+    scope: internal/commands
+    subject: "add AI programming question command"
+    body: "feat(internal/commands): add AI programming question command\n\nAdded a new 'ask' command that allows users to ask programming questions and get witty responses with 3 simple steps to solve them. The response style changes based on the user's selected personality level (NerdyClean, MildlyRude, or UnhingedFunny)."
