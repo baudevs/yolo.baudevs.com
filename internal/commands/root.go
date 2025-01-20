@@ -14,7 +14,10 @@ with a fun and personality-driven approach.`,
 // Execute executes the root command
 func Execute() error {
 	// Add all commands
-	rootCmd.AddCommand(InitMessagePromptsCmd())
+	rootCmd.AddCommand(
+		InitMessagePromptsCmd(),
+		AskCmd(),
+	)
 
 	return rootCmd.Execute()
 }

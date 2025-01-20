@@ -115,3 +115,8 @@ migrations:
     scope: internal/commands/commit.go
     subject: "update YOLO documentation"
     body: "docs(internal/commands/commit.go): update YOLO documentation\n\nUpdate YOLO documentation in the project story by creating a new commit with the changes."
+
+  - type: feat
+    scope: internal/commands
+    subject: "add AI programming question command"
+    body: "feat(internal/commands): add AI programming question command\n\nAdded a new 'ask' command that allows users to ask programming questions and get witty responses with 3 simple steps to solve them. The response style changes based on the user's selected personality level (NerdyClean, MildlyRude, or UnhingedFunny)."
