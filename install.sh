@@ -22,12 +22,44 @@ select_personality() {
     echo "3) Unhinged & Funny (Full chaos mode, not for the faint of heart)"
     
     read -p "Enter your choice (1-3) [default: 1]: " personality
+    
+    # Create YOLO config directory
+    CONFIG_DIR="$HOME/.config/yolo"
+    mkdir -p "$CONFIG_DIR"
+    
+    # Save personality to config file
     case $personality in
-        2) echo "export YOLO_PERSONALITY=2" >> ~/.zshrc ;;
-        3) echo "export YOLO_PERSONALITY=3" >> ~/.zshrc ;;
-        *) echo "export YOLO_PERSONALITY=1" >> ~/.zshrc ;;
+        2) echo "2" > "$CONFIG_DIR/personality" ;;
+        3) echo "3" > "$CONFIG_DIR/personality" ;;
+        *) echo "1" > "$CONFIG_DIR/personality" ;;
     esac
-    source ~/.zshrc
+    
+    # Create shell configuration
+    SHELL_TYPE=$(basename "$SHELL")
+    SHELL_CONFIG=""
+    
+    case "$SHELL_TYPE" in
+        "zsh")  SHELL_CONFIG="$HOME/.zshenv" ;;
+        "bash") SHELL_CONFIG="$HOME/.bash_profile" ;;
+        *)      SHELL_CONFIG="$HOME/.profile" ;;
+    esac
+    
+    # Remove any existing YOLO_PERSONALITY export
+    if [ -f "$SHELL_CONFIG" ]; then
+        sed -i.bak '/export YOLO_PERSONALITY=/d' "$SHELL_CONFIG"
+    fi
+    
+    # Add new personality setting
+    echo "export YOLO_PERSONALITY=$(cat "$CONFIG_DIR/personality")" >> "$SHELL_CONFIG"
+    
+    # Export for current session
+    export YOLO_PERSONALITY=$(cat "$CONFIG_DIR/personality")
+    
+    case $personality in
+        1) echo -e "${GREEN}Excellent choice! Let's proceed with scientific precision! 🧪${NC}" ;;
+        2) echo -e "${GREEN}Oh, feeling sassy today, are we? Let's do this! 😏${NC}" ;;
+        3) echo -e "${GREEN}YOLO MODE ACTIVATED! Hold onto your bits! 🚀${NC}" ;;
+    esac
 }
 
 # Function to check if a command exists
@@ -128,8 +160,8 @@ cd "$TMP_DIR"
 
 # Clone and build YOLO
 echo -e "${YELLOW}Cloning YOLO CLI repository...${NC}"
-git clone https://github.com/baudevs/com.yolo.dev.git
-cd com.yolo.dev
+git clone https://github.com/baudevs/yolo.baudevs.com.git
+cd yolo.baudevs.com
 
 echo -e "${YELLOW}Building YOLO CLI...${NC}"
 go mod download
@@ -144,7 +176,13 @@ sudo mv yolo /usr/local/bin/
 cd - > /dev/null
 rm -rf "$TMP_DIR"
 
-echo -e "${GREEN}🎉 Installation complete!${NC}"
+# Final message based on personality
+case $(cat "$HOME/.config/yolo/personality") in
+    1) echo -e "${GREEN}🎉 Installation complete! Your development environment has been successfully optimized!${NC}" ;;
+    2) echo -e "${GREEN}🎉 Done! Try not to break anything important... or do, I'm not your boss!${NC}" ;;
+    3) echo -e "${GREEN}🎉 BOOM! We're in business! Time to write some legendary code, you beautiful disaster!${NC}" ;;
+esac
+
 echo -e "${YELLOW}To get started, run:${NC}"
 echo -e "  yolo init"
 echo -e "  yolo ai configure -p openai -k your_api_key"

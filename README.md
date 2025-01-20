@@ -34,7 +34,7 @@ YOLO comes with three distinct personality levels:
 ### Quick Install (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/baudevs/com.yolo.dev/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/baudevs/yolo.baudevs.com/main/install.sh | bash
 ```
 
 The installer will:
@@ -63,8 +63,8 @@ The installer will:
 2. **Build YOLO**
    ```bash
    # Clone repository
-   git clone https://github.com/baudevs/com.yolo.dev.git
-   cd com.yolo.dev
+   git clone https://github.com/baudevs/yolo.baudevs.com.git
+   cd yolo.baudevs.com
 
    # Build and install
    make

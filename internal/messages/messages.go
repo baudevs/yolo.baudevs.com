@@ -35,7 +35,7 @@ var Messages = map[string]Message{
 		UnhingedFunny: "🔥 YOLO CLI in da house! Time to code like nobody's watching!",
 	},
 	"install_start": {
-		NerdyClean:    "Initiating installation sequence...",
+		NerdyClean:    "Initiating installation sequence with quantum precision...",
 		MildlyRude:    "Alright, let's get this party started! Installing stuff...",
 		UnhingedFunny: "Hold onto your bits! We're about to go full send on this install!",
 	},
@@ -50,9 +50,9 @@ var Messages = map[string]Message{
 		UnhingedFunny: "Installing Git cuz we ain't savages! Time to get version controlled! 🎮",
 	},
 	"install_success": {
-		NerdyClean:    "🎉 Installation complete! Ready to optimize your workflow!",
-		MildlyRude:    "Done! Try not to break anything important... 😏",
-		UnhingedFunny: "BOOM! 💥 We're in business! Let's cause some organized chaos!",
+		NerdyClean:    "🎉 Installation complete! Your development environment has been successfully optimized!",
+		MildlyRude:    "Done! Try not to break anything important... or do, I'm not your boss! 😏",
+		UnhingedFunny: "BOOM! We're in business! Time to write some legendary code, you beautiful disaster! 🚀",
 	},
 	"init_project": {
 		NerdyClean:    "Initializing project structure with mathematical precision...",
@@ -73,6 +73,16 @@ var Messages = map[string]Message{
 		NerdyClean:    "Oops! We've encountered an unexpected quantum fluctuation...",
 		MildlyRude:    "Well, that didn't work. Want to try again or...?",
 		UnhingedFunny: "FAIL! 💩 Everything's broken! But hey, that's job security!",
+	},
+	"error_git": {
+		NerdyClean:    "Git seems to be having an existential crisis...",
+		MildlyRude:    "Git is being Git again. You know how it is...",
+		UnhingedFunny: "Git just went YOLO and not in a good way! 🎢",
+	},
+	"error_ai": {
+		NerdyClean:    "The AI is currently contemplating the meaning of life...",
+		MildlyRude:    "AI machine broke. Have you tried turning it off and on again?",
+		UnhingedFunny: "The AI is having a mental breakdown! Time for therapy! 🛋️",
 	},
 }
 
