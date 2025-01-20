@@ -14,7 +14,21 @@ NC='\033[0m' # No Color
 # Required Go version
 GO_VERSION="1.21"
 
-echo -e "${GREEN}🚀 Welcome to YOLO CLI installer!${NC}"
+# Select personality level
+select_personality() {
+    echo -e "${GREEN}Select YOLO's personality level:${NC}"
+    echo "1) Clean & Nerdy (Safe for work, still fun)"
+    echo "2) Mildly Eccentric (Slightly edgy, occasional sass)"
+    echo "3) Unhinged & Funny (Full chaos mode, not for the faint of heart)"
+    
+    read -p "Enter your choice (1-3) [default: 1]: " personality
+    case $personality in
+        2) echo "export YOLO_PERSONALITY=2" >> ~/.zshrc ;;
+        3) echo "export YOLO_PERSONALITY=3" >> ~/.zshrc ;;
+        *) echo "export YOLO_PERSONALITY=1" >> ~/.zshrc ;;
+    esac
+    source ~/.zshrc
+}
 
 # Function to check if a command exists
 command_exists() {
@@ -83,6 +97,9 @@ install_git() {
     esac
 }
 
+echo -e "${GREEN}🚀 Welcome to YOLO CLI installer!${NC}"
+select_personality
+
 # Check if Git is installed
 if ! command_exists git; then
     echo -e "${YELLOW}Git is not installed. Installing...${NC}"
@@ -111,8 +128,8 @@ cd "$TMP_DIR"
 
 # Clone and build YOLO
 echo -e "${YELLOW}Cloning YOLO CLI repository...${NC}"
-git clone https://github.com/baudevs/yolo.baudevs.com.git
-cd yolo.baudevs.com
+git clone https://github.com/baudevs/com.yolo.dev.git
+cd com.yolo.dev
 
 echo -e "${YELLOW}Building YOLO CLI...${NC}"
 go mod download

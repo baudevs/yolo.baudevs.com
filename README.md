@@ -1,6 +1,6 @@
 # 🚀 YOLO CLI - Your Project Companion
 
-YOLO (You Only Live Once) is your cheeky, over-caffeinated project management sidekick. It’s fun, it’s sassy, and it’s built to make managing your AI coding projects ridiculously easy. Whether you’re a seasoned developer or an LLM just trying to vibe, YOLO’s got your back. 🤖
+YOLO (You Only Live Once) is your cheeky project management sidekick. Choose your preferred personality level and let YOLO guide you through your coding adventures! 
 
 ## ✨ Features
 
@@ -10,17 +10,35 @@ YOLO (You Only Live Once) is your cheeky, over-caffeinated project management si
 - 🚀 **Blazing Fast**: Because who has time to wait? Certainly not YOLO.
 - 🔄 **Git Smarts**: Effortlessly manage commits like a version control wizard.
 
+## 🎭 Personality Levels
+
+YOLO comes with three distinct personality levels:
+
+1. **Clean & Nerdy** (Default)
+   - Safe for work
+   - Nerdy humor
+   - Professional but fun
+
+2. **Mildly Eccentric**
+   - Slightly edgy
+   - Occasional sass
+   - Work-appropriate but spicy
+
+3. **Unhinged & Funny**
+   - Full chaos mode
+   - Not for the faint of heart
+   - Maximum entertainment
+
 ## 🛠️ Installation
 
 ### Quick Install (Recommended)
 
-Run our installation script that handles everything for you:
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/baudevs/yolo.baudevs.com/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/baudevs/com.yolo.dev/main/install.sh | bash
 ```
 
 The installer will:
+- Let you choose YOLO's personality
 - Install Git if needed
 - Install Go if needed
 - Clone the repository
@@ -28,8 +46,6 @@ The installer will:
 - Guide you through the setup
 
 ### Manual Installation
-
-If you prefer to install manually:
 
 1. **Install Prerequisites**
    ```bash
@@ -47,8 +63,8 @@ If you prefer to install manually:
 2. **Build YOLO**
    ```bash
    # Clone repository
-   git clone https://github.com/baudevs/yolo.baudevs.com.git
-   cd yolo.baudevs.com
+   git clone https://github.com/baudevs/com.yolo.dev.git
+   cd com.yolo.dev
 
    # Build and install
    make
@@ -57,12 +73,26 @@ If you prefer to install manually:
 
 3. **Configure YOLO**
    ```bash
-   # Initialize a project
+   # Choose personality level and initialize
    yolo init
 
    # Configure AI provider
    yolo ai configure -p openai -k your_api_key
    ```
+
+### Changing Personality
+
+You can change YOLO's personality at any time:
+
+```bash
+# Via environment variable
+export YOLO_PERSONALITY=1  # Clean & Nerdy (default)
+export YOLO_PERSONALITY=2  # Mildly Eccentric
+export YOLO_PERSONALITY=3  # Unhinged & Funny
+
+# Or during initialization
+yolo init --personality 2
+```
 
 ## 📚 Project Structure
 
