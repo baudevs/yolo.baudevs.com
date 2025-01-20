@@ -107,34 +107,6 @@ func runCommit(opts *models.CommitOptions) error {
 		return handleError("Failed to create commit", err, "git_commit")
 	}
 
-	// Sync with remote if needed
-	if !opts.NoSync && gitOps.HasRemote() {
-		fmt.Println("🔄 Syncing with remote...")
-		
-		// Pull first
-		if err := gitOps.Pull(); err != nil {
-			analysis, _ := errorAnalyzer.AnalyzeError(err, "pulling from remote")
-			if analysis != nil {
-				fmt.Println("\n❌ Pull failed!")
-				fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
-				
-				if !opts.Force {
-					return fmt.Errorf("sync failed")
-				}
-			}
-		}
-
-		// Then push
-		if err := gitOps.Push(); err != nil {
-			analysis, _ := errorAnalyzer.AnalyzeError(err, "pushing to remote")
-			if analysis != nil {
-				fmt.Println("\n❌ Push failed!")
-				fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
-				return fmt.Errorf("sync failed")
-			}
-		}
-	}
-
 	// Update YOLO documentation
 	fmt.Println("📝 Updating the project story...")
 	if err := updateDocs(commitMsg); err != nil {
@@ -152,10 +124,39 @@ func runCommit(opts *models.CommitOptions) error {
 		return handleError("Failed to create doc commit", err, "git_commit_docs")
 	}
 
+	// Sync with remote if needed
+	if !opts.NoSync && gitOps.HasRemote() {
+		fmt.Println("🔄 Syncing with remote...")
+		
+		// Pull first
+		if err := gitOps.Pull(); err != nil {
+			analysis, _ := errorAnalyzer.AnalyzeError(err, "pulling from remote")
+			if analysis != nil {
+				fmt.Println("\n❌ Pull failed!")
+				fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
+				
+				if !opts.Force {
+					return fmt.Errorf("sync failed")
+				}
+			}
+		}
+
+		// Then push both commits
+		if err := gitOps.Push(); err != nil {
+			analysis, _ := errorAnalyzer.AnalyzeError(err, "pushing to remote")
+			if analysis != nil {
+				fmt.Println("\n❌ Push failed!")
+				fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
+				return fmt.Errorf("sync failed")
+			}
+		}
+	}
+
 	fmt.Println("\n✅ All done! Here's what happened:")
 	fmt.Printf("1. Created commit: %s\n", formatCommitMessage(commitMsg))
+	fmt.Printf("2. Created documentation commit\n")
 	if !opts.NoSync && gitOps.HasRemote() {
-		fmt.Println("2. Synced with remote repository")
+		fmt.Println("3. Synced with remote repository")
 	}
 
 	return nil
