@@ -4,37 +4,35 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/sashabaranov/go-openai"
 )
+
+// CommitMessage represents the structured output from AI
+type CommitMessage struct {
+	Type      string   `json:"type"`
+	Scope     string   `json:"scope,omitempty"`
+	Subject   string   `json:"subject"`
+	Body      string   `json:"body,omitempty"`
+	Breaking  bool     `json:"breaking,omitempty"`
+	IssueRefs []string `json:"issue_refs,omitempty"`
+	CoAuthors []string `json:"co_authors,omitempty"`
+}
 
 // CommitAI handles AI-powered commit message generation
 type CommitAI struct {
 	client *openai.Client
 }
 
-// CommitMessage represents the structured output from AI
-type CommitMessage struct {
-	Type        string   `json:"type"`
-	Scope       string   `json:"scope,omitempty"`
-	Subject     string   `json:"subject"`
-	Body        string   `json:"body,omitempty"`
-	Breaking    bool     `json:"breaking,omitempty"`
-	IssueRefs   []string `json:"issue_refs,omitempty"`
-	CoAuthors   []string `json:"co_authors,omitempty"`
-}
-
 // NewCommitAI creates a new CommitAI instance
-func NewCommitAI() (*CommitAI, error) {
-	key := os.Getenv("OPENAI_API_KEY")
-	if key == "" {
-		return nil, fmt.Errorf("no AI provider configured")
+func NewCommitAI(apiKey string) (*CommitAI, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("OpenAI API key is required")
 	}
 
-	client := openai.NewClient(key)
 	return &CommitAI{
-		client: client,
+		client: openai.NewClient(apiKey),
 	}, nil
 }
 
@@ -63,85 +61,72 @@ The response must be a valid JSON object with this structure:
   "co_authors": ["optional array of co-authors"]
 }
 
-Here are some examples of good commit messages:
-
-Example 1 - New Feature:
-{
-  "type": "feat",
-  "scope": "auth",
-  "subject": "add OAuth2 authentication flow",
-  "body": "Implement OAuth2 authentication with Google and GitHub providers:\n- Add OAuth routes and handlers\n- Create user session management\n- Add secure token storage\n- Implement callback handling",
-  "breaking": false,
-  "issue_refs": ["#123", "#124"],
-  "co_authors": ["jane@example.com"]
-}
-
-Example 2 - Bug Fix:
-{
-  "type": "fix",
-  "scope": "api",
-  "subject": "handle null response in user profile endpoint",
-  "body": "Add null checks to prevent crashes when user profile is incomplete",
-  "breaking": false
-}
-
-Example 3 - Breaking Change:
-{
-  "type": "feat",
-  "scope": "database",
-  "subject": "migrate to PostgreSQL",
-  "body": "Switch from SQLite to PostgreSQL for better scalability:\n- Update database schema\n- Migrate existing data\n- Update connection handling",
-  "breaking": true,
-  "issue_refs": ["#234"]
-}
-
-Example 4 - Documentation:
-{
-  "type": "docs",
-  "scope": "readme",
-  "subject": "update installation instructions",
-  "body": "Add detailed steps for Windows and Linux installation"
-}
-
-Example 5 - Refactor:
-{
-  "type": "refactor",
-  "scope": "core",
-  "subject": "simplify error handling",
-  "body": "Consolidate error handling into a central utility:\n- Create error types\n- Add context preservation\n- Improve error messages"
-}
-
-Now analyze these changes and generate a similar commit message:
+Changes to analyze:
 ` + changes
 
 	resp, err := ai.client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: openai.GPT4,
+			Model: openai.GPT3Dot5Turbo,
 			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: "You are a helpful assistant that generates conventional commit messages in JSON format. Always ensure the output is valid JSON and follows the examples provided.",
-				},
 				{
 					Role:    openai.ChatMessageRoleUser,
 					Content: prompt,
 				},
 			},
-			ResponseFormat: &openai.ChatCompletionResponseFormat{
-				Type: openai.ChatCompletionResponseFormatTypeJSONObject,
-			},
+			Temperature: 0.3, // Lower temperature for more consistent output
 		},
 	)
+
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to generate commit message: %w", err)
 	}
 
-	// Validate JSON structure
+	// Validate the response is valid JSON
 	var msg CommitMessage
 	if err := json.Unmarshal([]byte(resp.Choices[0].Message.Content), &msg); err != nil {
-		return "", fmt.Errorf("invalid JSON response: %w", err)
+		return "", fmt.Errorf("invalid AI response format: %w", err)
 	}
 
-	return resp.Choices[0].Message.Content, nil
-} 
+	return FormatCommitMessage(msg), nil
+}
+
+// FormatCommitMessage formats a CommitMessage into a conventional commit string
+func FormatCommitMessage(msg CommitMessage) string {
+	var parts []string
+
+	// Add type
+	parts = append(parts, msg.Type)
+
+	// Add scope if present
+	if msg.Scope != "" {
+		parts = append(parts, fmt.Sprintf("(%s)", msg.Scope))
+	}
+
+	// Add breaking change marker
+	if msg.Breaking {
+		parts = append(parts, "!")
+	}
+
+	// Add subject
+	commitMsg := fmt.Sprintf("%s: %s", strings.Join(parts, ""), msg.Subject)
+
+	// Add body if present
+	if msg.Body != "" {
+		commitMsg += "\n\n" + msg.Body
+	}
+
+	// Add issue references
+	if len(msg.IssueRefs) > 0 {
+		commitMsg += "\n\nRefs: " + strings.Join(msg.IssueRefs, ", ")
+	}
+
+	// Add co-authors
+	if len(msg.CoAuthors) > 0 {
+		for _, author := range msg.CoAuthors {
+			commitMsg += fmt.Sprintf("\n\nCo-authored-by: %s", author)
+		}
+	}
+
+	return commitMsg
+}

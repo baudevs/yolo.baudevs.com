@@ -10,38 +10,59 @@ YOLO (You Only Live Once) is your cheeky, over-caffeinated project management si
 - 🚀 **Blazing Fast**: Because who has time to wait? Certainly not YOLO.
 - 🔄 **Git Smarts**: Effortlessly manage commits like a version control wizard.
 
-## 🛠️ Installation Instructions
+## 🛠️ Installation
 
-Alright, listen up, champ! Here’s how to install YOLO CLI and unleash your inner coding beast:
+### Quick Install (Recommended)
 
-### 1. **Download YOLO for macOS** (Sorry, Windows and Linux folks, you’re next on the list. Soon™.)
-
-- Go to the [YOLO Releases Page](https://github.com/baudevs/yolo.baudevs.com/releases/tag/v1.0.0-beta).
-- Download the file named `yolo-darwin` (macOS = Darwin, don’t ask, it’s science).
-
-### 2. **Move YOLO to the VIP PATH**
-
-Open the **Terminal** (that’s the hacker-y black box thing) and run these commands:
+Run our installation script that handles everything for you:
 
 ```bash
-# Make YOLO executable
-chmod +x ~/Downloads/yolo-darwin
-
-# Move it to your PATH (so YOLO can flex everywhere)
-mv ~/Downloads/yolo-darwin /usr/local/bin/yolo
+curl -fsSL https://raw.githubusercontent.com/baudevs/yolo.baudevs.com/main/install.sh | bash
 ```
 
-### 3. **Party Time!**
+The installer will:
+- Install Git if needed
+- Install Go if needed
+- Clone the repository
+- Build and install YOLO CLI
+- Guide you through the setup
 
-Run this command from your project root:
+### Manual Installation
 
-```bash
-yolo init
-```
+If you prefer to install manually:
 
-🎉 Boom! You’re now officially YOLO-ing like a pro.
+1. **Install Prerequisites**
+   ```bash
+   # macOS
+   brew install git go
 
----
+   # Ubuntu/Debian
+   sudo apt-get update && sudo apt-get install git golang-go
+
+   # Check installations
+   git --version
+   go version  # Should be 1.21 or later
+   ```
+
+2. **Build YOLO**
+   ```bash
+   # Clone repository
+   git clone https://github.com/baudevs/yolo.baudevs.com.git
+   cd yolo.baudevs.com
+
+   # Build and install
+   make
+   make install
+   ```
+
+3. **Configure YOLO**
+   ```bash
+   # Initialize a project
+   yolo init
+
+   # Configure AI provider
+   yolo ai configure -p openai -k your_api_key
+   ```
 
 ## 📚 Project Structure
 
@@ -72,8 +93,53 @@ YOLO CLI isn’t just a pretty face. Here’s what it can do:
 - `yolo init`: Set up a new project adventure.
 - `yolo prompt`: Get AI-powered assistance (because thinking is overrated).
 - `yolo graph`: Visualize project relationships like a boss.
-- `yolo commit`: Create conventional commits with style.
+- `yolo commit`: Create AI-powered conventional commits with style.
 - `yolo shortcuts`: Configure global shortcuts (WIP).
+- `yolo ai`: Manage AI providers and settings:
+  - `yolo ai configure`: Set up your AI providers
+  - `yolo ai list`: View configured providers
+  - `yolo ai test`: Test your AI setup
+
+### 🤖 AI Configuration
+
+YOLO supports multiple AI providers to power its features:
+
+```bash
+# Configure OpenAI
+yolo ai configure -p openai -k your_api_key
+
+# List providers
+yolo ai list
+
+# Test configuration
+yolo ai test
+```
+
+Supported providers:
+- OpenAI (default)
+- Anthropic Claude
+- Mistral AI
+
+### 🎯 Smart Commit
+
+YOLO's commit command is now powered by AI:
+
+```bash
+# Create an AI-powered commit
+yolo commit
+
+# Skip remote sync
+yolo commit --no-sync
+
+# Force commit with warnings
+yolo commit --force
+```
+
+Features:
+- AI-generated conventional commits
+- Automatic staging
+- Remote repository syncing
+- Smart error handling with AI assistance
 
 ---
 
