@@ -105,3 +105,8 @@ migrations:
     rollback:
       - "Revert to previous directory structure"
       - "Restore old documentation format"
+
+  - type: feat
+    scope: internal/git
+    subject: "add summary of changes functionality"
+    body: "feat(internal/git): add summary of changes functionality\n\nAdded the ability to get a summary of changes, including staged changes, unstaged changes, and untracked files. Also implemented a feature to provide a short diff for context, with truncation if too long."
