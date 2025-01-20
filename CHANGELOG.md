@@ -83,3 +83,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat: add AI programming question command
 ### 2025-01-20
 - refactor: create reusable AI client
+### 2025-01-20
+- refactor: refactor client initialization in CommitAI

@@ -135,3 +135,8 @@ migrations:
     scope: internal/ai
     subject: "create reusable AI client"
     body: "refactor(internal/ai): create reusable AI client\n\nCreated a new reusable AI client that can be used across different commands. Moved the OpenAI interaction logic into a dedicated client.go file and updated the commit AI to use this new client."
+
+  - type: refactor
+    scope: internal/ai/commit.go
+    subject: "refactor client initialization in CommitAI"
+    body: "refactor(internal/ai/commit.go): refactor client initialization in CommitAI\n\nRefactored the client initialization in the CommitAI struct to use the openai.NewClient method with the provided API key. Removed the Config struct and DefaultProvider as they are no longer needed."
