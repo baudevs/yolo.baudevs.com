@@ -130,3 +130,8 @@ migrations:
     scope: internal/ai
     subject: "create reusable AI client"
     body: "refactor(internal/ai): create reusable AI client\n\nCreated a new reusable AI client that can be used across different commands. Moved the OpenAI interaction logic into a dedicated client.go file and updated the commit AI to use this new client."
+
+  - type: refactor
+    scope: internal/ai
+    subject: "create reusable AI client"
+    body: "refactor(internal/ai): create reusable AI client\n\nCreated a new reusable AI client that can be used across different commands. Moved the OpenAI interaction logic into a dedicated client.go file and updated the commit AI to use this new client."
