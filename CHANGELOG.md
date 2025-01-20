@@ -85,3 +85,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - refactor: create reusable AI client
 ### 2025-01-20
 - refactor: refactor client initialization in CommitAI
+### 2025-01-20
+- fix: add ask command to root command

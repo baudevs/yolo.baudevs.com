@@ -165,3 +165,8 @@ migrations:
     scope: internal/commands
     subject: "remove unused root.go file"
     body: "refactor(internal/commands): remove unused root.go file\n\nRemoved the unused root.go file since all command initialization and root command configuration is handled in cmd/yolo/main.go. This simplifies the codebase and removes potential confusion about where commands should be registered."
+
+  - type: fix
+    scope: cmd/yolo/main.go
+    subject: "add ask command to root command"
+    body: "fix(cmd/yolo/main.go): add ask command to root command\n\nAdded the new 'ask' command to the main.go root command initialization to make it available in the CLI."
