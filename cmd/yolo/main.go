@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/commands"
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +32,15 @@ No complicated stuff - just run a command and watch the magic happen!`,
 }
 
 func init() {
+	// Load .env file from the project root
+	if home, err := os.UserHomeDir(); err == nil {
+		envPath := filepath.Join(home, ".yolo", ".env")
+		_ = godotenv.Load(envPath)
+	}
+	
+	// Also try loading from current directory
+	_ = godotenv.Load()
+
 	// Core commands
 	rootCmd.AddCommand(commands.InitCmd())
 	rootCmd.AddCommand(commands.ExplainCmd())

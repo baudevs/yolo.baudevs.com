@@ -19,6 +19,7 @@ You can activate a new license, check your status, or purchase more credits.`,
 	cmd.AddCommand(
 		newLicenseActivateCommand(),
 		newLicenseStatusCommand(),
+		newLicenseCompleteCommand(),
 	)
 
 	return cmd
@@ -101,6 +102,39 @@ func newLicenseStatusCommand() *cobra.Command {
 			} else {
 				fmt.Printf("Credits: %d remaining\n", lic.CreditsLeft)
 			}
+
+			return nil
+		},
+	}
+}
+
+func newLicenseCompleteCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "complete [session-id]",
+		Short: "Complete license activation",
+		Long: `Complete the license activation process after payment.
+Provide the session ID from the checkout URL to activate your license.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID := args[0]
+
+			// Initialize license manager
+			manager, err := license.NewManager(license.Config{
+				StripeSecretKey:  os.Getenv("STRIPE_SECRET_KEY"),
+				DefaultOpenAIKey: os.Getenv("OPENAI_API_KEY"),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to initialize license manager: %w", err)
+			}
+
+			// Activate the license
+			if err := manager.ActivateSubscription(sessionID); err != nil {
+				return fmt.Errorf("failed to activate license: %w", err)
+			}
+
+			fmt.Println("✨ License activated successfully!")
+			fmt.Println("\nVerify your status with:")
+			fmt.Println("  yolo license status")
 
 			return nil
 		},
