@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/commands"
@@ -29,19 +30,28 @@ No complicated stuff - just run a command and watch the magic happen!`,
 }
 
 func init() {
+	// Core commands
 	rootCmd.AddCommand(commands.InitCmd())
-	rootCmd.AddCommand(commands.PromptCmd())
-	rootCmd.AddCommand(commands.GraphCmd)
-	rootCmd.AddCommand(commands.CommitCmd())
-	rootCmd.AddCommand(commands.ShortcutsCmd)
 	rootCmd.AddCommand(commands.ExplainCmd())
-	rootCmd.AddCommand(commands.AICmd())
+	
+	// AI commands
+	rootCmd.AddCommand(commands.NewCommitCommand())
+	rootCmd.AddCommand(commands.NewAskCommand())
+	
+	// Config management
+	rootCmd.AddCommand(commands.NewAICommand())
+	
+	// Prompt management
 	rootCmd.AddCommand(commands.InitMessagePromptsCmd())
-	rootCmd.AddCommand(commands.AskCmd())
+	rootCmd.AddCommand(commands.NewPromptCommand())
+	
+	// License management
+	rootCmd.AddCommand(commands.NewLicenseCommand())
 }
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }

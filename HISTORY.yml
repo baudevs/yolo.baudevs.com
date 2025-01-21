@@ -115,6 +115,16 @@ changes:
     subject: "fix command references"
     body: "fix(cmd/yolo/main.go): fix command references\n\nFixed command references in main.go to use the correct command variables and functions. GraphCmd and ShortcutsCmd are variables while AICmd() is a function."
 
+  - type: fix
+    scope: internal/ai
+    subject: "fix build errors in AI client"
+    body: "fix(internal/ai): fix build errors in AI client\n\nFixed build errors in AI client by:\n- Using GetAPIKey() instead of accessing OpenAIKey directly\n- Using GPT3Dot5Turbo constant instead of config.Model\n- Fixed API key checks to use GetAPIKey()"
+
+  - type: fix
+    scope: internal/commands
+    subject: "update ask command for new AI client"
+    body: "fix(internal/commands): update ask command for new AI client\n\nUpdated ask command to work with the new AI client and license manager:\n- Added license manager initialization\n- Updated AI client creation with new signature\n- Simplified personality handling\n- Added proper error handling"
+
 migrations:
   - version: 1.0.0-beta
     date: 2024-01-17
@@ -170,3 +180,23 @@ migrations:
     scope: cmd/yolo/main.go
     subject: "add ask command to root command"
     body: "fix(cmd/yolo/main.go): add ask command to root command\n\nAdded the new 'ask' command to the main.go root command initialization to make it available in the CLI."
+
+  - type: feat
+    scope: internal/license
+    subject: "add license management system"
+    body: "feat(internal/license): add license management system\n\nAdded a new license management system that allows users to either use their own OpenAI API key or purchase credits through Gumroad. Features include:\n- License verification through Gumroad API\n- Credit tracking and deduction per AI request\n- Configurable credit costs per token\n- New 'license' command for managing licenses"
+
+  - type: feat
+    scope: internal/ai
+    subject: "integrate license manager with AI client"
+    body: "feat(internal/ai): integrate license manager with AI client\n\nUpdated the AI client to work with the new license management system:\n- Support for both user API keys and our default key\n- Credit deduction for AI requests when using our key\n- Improved error messages with clear instructions"
+
+  - type: feat
+    scope: internal/license
+    subject: "integrate Gumroad credit management"
+    body: "feat(internal/license): integrate Gumroad credit management\n\nEnhanced license manager to use Gumroad's API for credit management:\n- Store credits in Gumroad's metadata\n- Sync credit balance with Gumroad on each operation\n- Refresh credits from Gumroad when local balance is low\n- Better error handling and validation"
+
+  - type: feat
+    scope: internal/license
+    subject: "add credit packages"
+    body: "feat(internal/license): add credit packages\n\nAdded credit package definitions and improved purchase command:\n- Starter Pack: 5,000 credits ($5)\n- Pro Pack: 25,000 credits ($20)\n- Team Pack: 100,000 credits ($60)\n- Enterprise Pack: 500,000 credits ($200)\n- Unlimited Monthly: Unlimited credits ($99/month)\n\nEnhanced purchase command to show detailed package information including estimated query counts and rate limits."

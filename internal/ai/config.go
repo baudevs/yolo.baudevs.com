@@ -1,86 +1,120 @@
 package ai
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
 	"gopkg.in/yaml.v3"
 )
 
-// Provider represents an AI provider configuration
-type Provider struct {
-	Name     string            `yaml:"name"`
-	APIKey   string            `yaml:"api_key,omitempty"`
-	BaseURL  string            `yaml:"base_url,omitempty"`
-	Model    string            `yaml:"model"`
-	Prompts  map[string]string `yaml:"prompts,omitempty"`
-	Enabled  bool             `yaml:"enabled"`
-}
+const (
+	configFileName = ".yolo/ai_config.json"
+)
 
 // Config represents the AI configuration
 type Config struct {
-	DefaultProvider string              `yaml:"default_provider"`
-	Providers      map[string]Provider `yaml:"providers"`
+	DefaultOpenAIKey string            `yaml:"default_openai_key" json:"default_openai_key"` // Our API key
+	APIKeys          map[string]string  `yaml:"api_keys" json:"api_keys"`
+	Model            string            `yaml:"model"`
+	Prompts          map[string]string `yaml:"prompts,omitempty"`
 }
 
-// LoadConfig loads the AI configuration from the config file
+// LoadConfig loads the AI configuration from disk
 func LoadConfig() (*Config, error) {
-	// Get config directory
+	// Try to get API key from environment first
+	apiKey := os.Getenv("OPENAI_API_KEY")
+
+	// Try to load from YAML config first
 	configDir, err := getConfigDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get config directory: %w", err)
 	}
 
-	// Read config file
-	configFile := filepath.Join(configDir, "ai_config.yml")
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// Create default config
-			return createDefaultConfig(configDir)
-		}
-		return nil, err
-	}
-
-	// Parse config
 	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+
+	// Try to load YAML config
+	yamlPath := filepath.Join(configDir, "config.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	if err == nil {
+		if err := yaml.Unmarshal(yamlData, &config); err != nil {
+			return nil, fmt.Errorf("failed to parse YAML config: %w", err)
+		}
+	}
+
+	// Try to load JSON config
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	jsonPath := filepath.Join(homeDir, configFileName)
+	jsonData, err := os.ReadFile(jsonPath)
+	if err == nil {
+		if err := json.Unmarshal(jsonData, &config); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON config: %w", err)
+		}
+	}
+
+	// Initialize if empty
+	if config.APIKeys == nil {
+		config.APIKeys = make(map[string]string)
+	}
+
+	// Environment variables take precedence
+	if apiKey != "" {
+		config.APIKeys["openai"] = apiKey
+		config.DefaultOpenAIKey = apiKey
 	}
 
 	return &config, nil
 }
 
-// SaveConfig saves the AI configuration to the config file
-func SaveConfig(config *Config) error {
-	// Get config directory
+// SaveConfig saves the configuration to both YAML and JSON formats
+func (c *Config) SaveConfig() error {
+	// Save YAML config
 	configDir, err := getConfigDir()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get config directory: %w", err)
 	}
 
-	// Create config directory if it doesn't exist
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Marshal config
-	data, err := yaml.Marshal(config)
+	yamlData, err := yaml.Marshal(c)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		return fmt.Errorf("failed to marshal YAML config: %w", err)
 	}
 
-	// Write config file
-	configFile := filepath.Join(configDir, "ai_config.yml")
-	if err := os.WriteFile(configFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+	yamlPath := filepath.Join(configDir, "config.yaml")
+	if err := os.WriteFile(yamlPath, yamlData, 0644); err != nil {
+		return fmt.Errorf("failed to write YAML config: %w", err)
+	}
+
+	// Save JSON config
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	jsonConfigDir := filepath.Join(homeDir, ".yolo")
+	if err := os.MkdirAll(jsonConfigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create JSON config directory: %w", err)
+	}
+
+	jsonData, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON config: %w", err)
+	}
+
+	jsonPath := filepath.Join(homeDir, configFileName)
+	if err := os.WriteFile(jsonPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write JSON config: %w", err)
 	}
 
 	return nil
 }
 
-// GetAPIKey gets the API key for the specified provider
+// GetAPIKey returns the API key for the given provider
 func (c *Config) GetAPIKey(provider string) string {
 	// Check environment variable first
 	envKey := fmt.Sprintf("%s_API_KEY", strings.ToUpper(provider))
@@ -89,49 +123,79 @@ func (c *Config) GetAPIKey(provider string) string {
 	}
 
 	// Fall back to config file
-	if p, ok := c.Providers[provider]; ok {
-		return p.APIKey
+	if key, ok := c.APIKeys[provider]; ok {
+		return key
+	}
+
+	// Finally, try default OpenAI key
+	if provider == "openai" {
+		return c.DefaultOpenAIKey
 	}
 
 	return ""
 }
 
 // createDefaultConfig creates a default AI configuration
-func createDefaultConfig(configDir string) (*Config, error) {
+func createDefaultConfig() (*Config, error) {
 	config := &Config{
-		DefaultProvider: "openai",
-		Providers: map[string]Provider{
-			"openai": {
-				Name:    "OpenAI",
-				Model:   "gpt-3.5-turbo",
-				Enabled: true,
-				Prompts: map[string]string{
-					"commit": defaultCommitPrompt,
-					"error":  defaultErrorPrompt,
-				},
-			},
-			"anthropic": {
-				Name:    "Anthropic Claude",
-				Model:   "claude-2",
-				Enabled: false,
-			},
-			"mistral": {
-				Name:    "Mistral AI",
-				Model:   "mistral-medium",
-				Enabled: false,
-			},
+		Model: "gpt-4",
+		Prompts: map[string]string{
+			"commit": `Analyze these changes and generate a conventional commit message:
+
+%s
+
+The commit message should follow the Conventional Commits specification and include:
+1. Type (feat, fix, docs, style, refactor, test, chore)
+2. Optional scope in parentheses
+3. Description
+4. Optional body with breaking changes
+5. Optional footer with issue references
+
+Keep it clear and concise.`,
+			"error": `Error context: %s
+Error message: %v
+
+Please analyze this error and provide:
+1. A clear explanation of what went wrong
+2. The likely root cause
+3. Suggested steps to fix it
+4. Any preventive measures for the future
+
+Format the response in a clear, concise way.`,
+			"ask": `You are a helpful programming assistant. Please provide a 3-step solution to this question:
+%s
+
+Format your response as:
+"Here's how to solve that, fellow developer!
+
+1. [First step]
+2. [Second step]
+3. [Third step]"
+
+Keep each step concise and practical.`,
 		},
+		APIKeys: make(map[string]string),
+	}
+
+	// Create config directory
+	configDir, err := getConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Save default config
-	if err := SaveConfig(config); err != nil {
+	if err := config.SaveConfig(); err != nil {
 		return nil, err
 	}
 
 	return config, nil
 }
 
-// getConfigDir gets the YOLO config directory
+// getConfigDir returns the configuration directory path
 func getConfigDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -140,40 +204,3 @@ func getConfigDir() (string, error) {
 
 	return filepath.Join(homeDir, ".yolo"), nil
 }
-
-// Default prompts
-const (
-	defaultCommitPrompt = `Analyze the following Git changes and generate a conventional commit message in JSON format.
-
-Follow these rules:
-1. Use semantic commit types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
-2. Keep the subject line clear and concise (max 72 chars)
-3. Use present tense ("add" not "added")
-4. Don't end the subject line with a period
-5. Add relevant details in the body
-6. Mark breaking changes with breaking=true
-7. Include issue references if found in the changes
-8. Add co-authors if multiple contributors are detected
-
-The response must be a valid JSON object with this structure:
-{
-  "type": "feat|fix|docs|style|refactor|perf|test|build|ci|chore",
-  "scope": "optional area affected",
-  "subject": "concise description",
-  "body": "optional detailed explanation",
-  "breaking": false,
-  "issue_refs": ["optional array of issue references"],
-  "co_authors": ["optional array of co-authors"]
-}`
-
-	defaultErrorPrompt = `Analyze the following error in the context of a Git operation and provide a helpful explanation and solutions.
-Context: %s
-Error: %v
-
-Respond with a JSON object containing:
-{
-  "problem": "brief description of the issue",
-  "explanation": "user-friendly explanation of what went wrong",
-  "solutions": ["array of step-by-step solutions"]
-}`
-)

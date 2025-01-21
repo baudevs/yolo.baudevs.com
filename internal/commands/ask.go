@@ -1,16 +1,18 @@
 package commands
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/ai"
-	"github.com/baudevs/yolo.baudevs.com/internal/messages"
+	"github.com/baudevs/yolo.baudevs.com/internal/license"
 	"github.com/spf13/cobra"
 )
 
-// AskCmd initializes the ask command
-func AskCmd() *cobra.Command {
+// NewAskCommand initializes the ask command
+func NewAskCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ask [question]",
 		Short: "Ask an AI programming question",
@@ -29,62 +31,28 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	question := args[0]
 
 	// Load AI config
-	aiConfig, err := ai.LoadConfig()
+	config, err := ai.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load AI config: %w", err)
 	}
 
+	// Initialize license manager
+	licenseManager, err := license.NewManager(license.Config{
+		StripeSecretKey:  os.Getenv("STRIPE_SECRET_KEY"),
+		DefaultOpenAIKey: os.Getenv("OPENAI_API_KEY"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize license manager: %w", err)
+	}
+
 	// Create AI client
-	aiClient := ai.NewClient(aiConfig)
-
-	// Get current personality level
-	personality := messages.GetPersonality()
-
-	// Create prompt based on personality
-	var prompt string
-	switch personality {
-	case messages.NerdyClean:
-		prompt = fmt.Sprintf(`You are a helpful programming assistant. Please provide a 3-step solution to this question:
-%s
-
-Format your response as:
-"Here's how to solve that, fellow developer!
-
-1. [First step]
-2. [Second step]
-3. [Third step]"
-
-Keep each step concise and practical.`, question)
-
-	case messages.MildlyRude:
-		prompt = fmt.Sprintf(`You are a slightly sassy programming assistant. Please provide a 3-step solution to this question:
-%s
-
-Format your response as:
-"*rolls eyes* Fine, here's how you do it:
-
-1. [First step]
-2. [Second step]
-3. [Third step]"
-
-Keep each step concise and add a bit of attitude.`, question)
-
-	case messages.UnhingedFunny:
-		prompt = fmt.Sprintf(`You are an unhinged but hilarious programming assistant. Please provide a 3-step solution to this question:
-%s
-
-Format your response as:
-"HOLY SH*T, LET'S F*CKING DO THIS! 🚀
-
-1. [First step]
-2. [Second step]
-3. [Third step]"
-
-Keep each step concise and add some wild energy!`, question)
+	aiClient, err := ai.NewClient(config, licenseManager)
+	if err != nil {
+		return fmt.Errorf("failed to initialize AI client: %w", err)
 	}
 
 	// Get response from AI
-	response, err := aiClient.GetCompletion(prompt)
+	response, err := aiClient.Ask(context.Background(), question)
 	if err != nil {
 		return fmt.Errorf("failed to get AI response: %w", err)
 	}
