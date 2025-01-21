@@ -10,6 +10,7 @@ import (
 	"time"
 	"github.com/baudevs/yolo.baudevs.com/internal/models"
 	"github.com/sashabaranov/go-openai"
+	"os/exec"
 )
 
 // CommitAI handles AI-powered commit message generation
@@ -30,14 +31,15 @@ func NewCommitAI(apiKey string) (*CommitAI, error) {
 
 // getDebugDir returns the path to the debug directory
 func (ai *CommitAI) getDebugDir() (string, error) {
-	// Get working directory
-	wd, err := os.Getwd()
+	// Get project root by looking for go.mod
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
+		return "", fmt.Errorf("failed to find project root: %w", err)
 	}
 
-	// Create .yolo-debug in the project root
-	debugDir := filepath.Join(wd, ".yolo-debug")
+	projectRoot := strings.TrimSpace(string(out))
+	debugDir := filepath.Join(projectRoot, ".yolo-debug")
 	if err := os.MkdirAll(debugDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create debug directory: %w", err)
 	}
