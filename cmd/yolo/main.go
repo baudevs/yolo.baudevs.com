@@ -47,6 +47,7 @@ func init() {
 	
 	// License management
 	rootCmd.AddCommand(commands.NewLicenseCommand())
+	rootCmd.AddCommand(commands.SprintCmd()) // Add sprint command
 }
 
 func main() {
