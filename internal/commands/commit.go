@@ -1,259 +1,152 @@
 package commands
 
 import (
-	//"encoding/json"
+	"context"
 	"fmt"
 	"os"
 	"strings"
-	"time"
+	"path/filepath"
+	"encoding/json"
+
 	"github.com/baudevs/yolo.baudevs.com/internal/ai"
 	"github.com/baudevs/yolo.baudevs.com/internal/git"
-	"github.com/baudevs/yolo.baudevs.com/internal/models"
+	"github.com/baudevs/yolo.baudevs.com/internal/license"
 	"github.com/spf13/cobra"
 )
 
+func NewCommitCommand() *cobra.Command {
+	var (
+		message string
+		all     bool
+		retry   bool
+	)
 
-
-func CommitCmd() *cobra.Command {
-	opts := &models.CommitOptions{}
-
-	cmd := &cobra.Command{
+	commitCmd := &cobra.Command{
 		Use:   "commit",
-		Short: "Create an AI-powered commit with your changes",
-		Long: `Create a commit with AI-generated message, automatically stage changes,
-and sync with remote repository. The AI will analyze your changes and:
-1. Generate a conventional commit message
-2. Stage and commit your changes
-3. Sync with remote (if available)
-4. Help fix any errors that occur`,
+		Short: "Commit changes with AI-generated messages",
+		Long: `Commit your changes with AI-generated commit messages.
+The AI will analyze your changes and generate a descriptive commit message.
+
+Examples:
+  yolo commit              # Generate message for staged changes
+  yolo commit -a          # Stage all changes and generate message
+  yolo commit -m "feat: add user auth"  # Use custom message`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCommit(opts)
+			ctx := context.Background()
+
+			// Initialize git client
+			gitClient, err := git.NewClient()
+			if err != nil {
+				return fmt.Errorf("failed to initialize git client: %w", err)
+			}
+
+			// Check if we have any changes
+			if !gitClient.HasChanges() {
+				return fmt.Errorf("no changes to commit")
+			}
+
+			// Stage all changes if requested
+			if all {
+				if err := gitClient.StageAll(); err != nil {
+					return fmt.Errorf("failed to stage changes: %w", err)
+				}
+			}
+
+			// Get staged changes
+			diff, err := gitClient.GetStagedDiff()
+			if err != nil {
+				return fmt.Errorf("failed to get staged changes: %w", err)
+			}
+
+			// If no staged changes, error out
+			if diff == "" {
+				return fmt.Errorf("no staged changes. Use -a to stage all changes")
+			}
+
+			// Initialize AI client
+			aiClient, err := initAIClient()
+			if err != nil {
+				return fmt.Errorf("failed to initialize AI client: %w", err)
+			}
+
+			// If message is provided, use it directly
+			if message != "" {
+				if err := gitClient.Commit(message); err != nil {
+					// If commit fails, try to analyze error
+					analysis, err2 := aiClient.AnalyzeError(ctx, err, "git commit")
+					if err2 == nil && analysis != "" {
+						return fmt.Errorf("%v\n\nAI Analysis: %s", err, analysis)
+					}
+					return fmt.Errorf("failed to commit: %w", err)
+				}
+				return nil
+			}
+
+			// Generate commit message
+			msg, err := aiClient.GenerateCommitMessage(ctx, diff)
+			if err != nil {
+				// Try to analyze error
+				analysis, err2 := aiClient.AnalyzeError(ctx, err, "generating commit message")
+				if err2 == nil && analysis != "" {
+					return fmt.Errorf("%v\n\nAI Analysis: %s", err, analysis)
+				}
+				return fmt.Errorf("failed to generate commit message: %w", err)
+			}
+
+			// Commit changes
+			if err := gitClient.Commit(msg); err != nil {
+				return fmt.Errorf("failed to commit: %w", err)
+			}
+
+			fmt.Printf(" Committed with message:\n%s\n", msg)
+			return nil
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.NoSync, "no-sync", false, "Don't sync with remote")
-	cmd.Flags().BoolVarP(&opts.Force, "force", "f", false, "Force commit even with warnings")
+	commitCmd.Flags().StringVarP(&message, "message", "m", "", "Use the given message instead of generating one")
+	commitCmd.Flags().BoolVarP(&all, "all", "a", false, "Stage all changes before committing")
+	commitCmd.Flags().BoolVarP(&retry, "retry", "r", false, "Retry the last failed commit")
 
-	return cmd
+	return commitCmd
 }
 
-func runCommit(opts *models.CommitOptions) error {
-	// Get working directory
-	wd, err := os.Getwd()
+func initAIClient() (*ai.Client, error) {
+	// Initialize license manager
+	manager, err := license.NewManager(license.Config{
+		StripeSecretKey:  os.Getenv("STRIPE_SECRET_KEY"),
+		DefaultOpenAIKey: os.Getenv("OPENAI_API_KEY"),
+	})
 	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
+		return nil, fmt.Errorf("failed to initialize license manager: %w", err)
 	}
 
-	// Initialize Git operations
-	gitOps := git.NewGitOps(wd)
-
-	// Check for changes
-	if !gitOps.HasChanges() {
-		fmt.Println("✨ Nothing to commit - working tree clean")
-		return nil
-	}
-
-	// Get changes for AI analysis
-	fmt.Println("🔍 Analyzing your changes...")
-	changes, err := gitOps.GetChanges()
+	// Load AI config
+	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return handleError("Failed to get changes", err, "git_changes")
+		return nil, fmt.Errorf("failed to get config directory: %w", err)
 	}
+	configPath := filepath.Join(configDir, "yolo", "ai_config.json")
 
-	// Load AI configuration
-	config, err := ai.LoadConfig()
-	if err != nil {
-		return handleError("Failed to load AI configuration", err, "ai_config")
-	}
-
-	// Get API key from configuration
-	apiKey := config.GetAPIKey(config.DefaultProvider)
-	if apiKey == "" {
-		return fmt.Errorf("OpenAI API key not found. Please run 'yolo ai configure' first")
-	}
-
-	// Initialize AI providers
-	commitAI, err := ai.NewCommitAI(apiKey)
-	if err != nil {
-		return handleError("Failed to initialize AI", err, "ai_init")
-	}
-
-	errorAnalyzer := ai.NewErrorAnalyzer(apiKey)
-
-	// Generate commit message
-	fmt.Println("🤖 Generating commit message...")
-	message,structuredMsg, err := commitAI.GenerateCommitMessage(changes)
-	if err != nil {
-		return handleError("Failed to generate commit message", err, "ai_message")
-	}
-	// use the structured message response
-	commitMsg := structuredMsg
-	
-	// Parse the JSON response
-	/* if err := json.Unmarshal([]byte(message), &commitMsg); err != nil {
-		fmt.Printf("Failed to parse JSON: %v\n", err)
-		return handleError("Failed to parse commit message", err, "ai_parse")
-	}  */
-
-	// Stage changes
-	fmt.Println("📦 Staging changes...")
-	if err := gitOps.StageAll(); err != nil {
-		return handleError("Failed to stage changes", err, "git_stage")
-	}
-
-	// Create commit
-	fmt.Println("💾 Creating commit...")
-	if err := gitOps.Commit(message); err != nil {
-		return handleError("Failed to create commit", err, "git_commit")
-	}
-
-	// Update YOLO documentation
-	fmt.Println("📝 Updating the project story...")
-	if err := updateDocs(commitMsg); err != nil {
-		return handleError("Failed to update docs", err, "docs_update")
-	}
-
-	// Stage documentation changes
-	if err := gitOps.StageAll(); err != nil {
-		return handleError("Failed to stage doc updates", err, "git_stage_docs")
-	}
-
-	// Create documentation commit
-	docMessage := fmt.Sprintf("docs: update YOLO documentation\n\n%s", formatCommitMessage(commitMsg))
-	if err := gitOps.Commit(docMessage); err != nil {
-		return handleError("Failed to create doc commit", err, "git_commit_docs")
-	}
-
-	// Sync with remote if needed
-	if !opts.NoSync && gitOps.HasRemote() {
-		fmt.Println("🔄 Syncing with remote...")
-		
-		// Pull first
-		if err := gitOps.Pull(); err != nil {
-			analysis, _ := errorAnalyzer.AnalyzeError(err, "pulling from remote")
-			if analysis != nil {
-				fmt.Println("\n❌ Pull failed!")
-				fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
-				
-				if !opts.Force {
-					return fmt.Errorf("sync failed")
-				}
-			}
-		}
-
-		// Then push both commits
-		if err := gitOps.Push(); err != nil {
-			analysis, _ := errorAnalyzer.AnalyzeError(err, "pushing to remote")
-			if analysis != nil {
-				fmt.Println("\n❌ Push failed!")
-				fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
-				return fmt.Errorf("sync failed")
-			}
+	var config ai.Config
+	data, err := os.ReadFile(configPath)
+	if err == nil {
+		if err := json.Unmarshal(data, &config); err != nil {
+			return nil, fmt.Errorf("failed to parse config: %w", err)
 		}
 	}
 
-	fmt.Println("\n✅ All done! Here's what happened:")
-	fmt.Printf("1. Created commit: %s\n", formatCommitMessage(commitMsg))
-	fmt.Printf("2. Created documentation commit\n")
-	if !opts.NoSync && gitOps.HasRemote() {
-		fmt.Println("3. Synced with remote repository")
-	}
-
-	return nil
-}
-
-func formatCommitMessage(msg models.CommitMessage) string {
-	// Start with type and scope
-	result := msg.Type
-	if msg.Scope != "" {
-		result += fmt.Sprintf("(%s)", msg.Scope)
-	}
-	if msg.Breaking {
-		result += "!"
-	}
-	result += fmt.Sprintf(": %s", msg.Subject)
-
-	// Add body if present
-	if msg.Body != "" {
-		result += fmt.Sprintf("\n\n%s", msg.Body)
-	}
-
-	// Add issue references if present
-	if len(msg.IssueRefs) > 0 {
-		result += fmt.Sprintf("\n\nRefs: %s", strings.Join(msg.IssueRefs, ", "))
-	}
-
-	// Add co-authors if present
-	for _, author := range msg.CoAuthors {
-		result += fmt.Sprintf("\n\nCo-authored-by: %s", author)
-	}
-
-	return result
-}
-
-func updateDocs(msg models.CommitMessage) error {
-	// Format the conventional commit message
-	formattedMessage := formatCommitMessage(msg)
-
-	// Update HISTORY.yml
-	entry := fmt.Sprintf(`
-  - type: %s
-    scope: %s
-    subject: %q
-    body: %q
-`, msg.Type, msg.Scope, msg.Subject, formattedMessage)
-
-	historyFile := "HISTORY.yml"
-	history, err := os.OpenFile(historyFile, os.O_APPEND|os.O_WRONLY, 0644)
+	// Initialize AI client
+	aiClient, err := ai.NewClient(&config, manager)
 	if err != nil {
-		return err
-	}
-	defer history.Close()
-
-	if _, err := history.WriteString(entry); err != nil {
-		return err
-	}
-
-	// Update CHANGELOG.md
-	date := time.Now().Format("2006-01-02")
-	changelogEntry := fmt.Sprintf("\n### %s\n- %s: %s", date, msg.Type, msg.Subject)
-
-	changelogFile := "CHANGELOG.md"
-	changelog, err := os.OpenFile(changelogFile, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer changelog.Close()
-
-	_, err = changelog.WriteString(changelogEntry)
-	return err
-}
-
-func handleError(context string, err error, errorType string) error {
-	// Load AI configuration
-	config, configErr := ai.LoadConfig()
-	if configErr != nil {
-		return fmt.Errorf("%s: %w (failed to load AI config: %v)", context, err, configErr)
+		// Try to analyze error
+		if strings.Contains(err.Error(), "OpenAI API key") {
+			analysis, err2 := aiClient.AnalyzeError(context.Background(), err, "initializing AI client")
+			if err2 == nil && analysis != "" {
+				return nil, fmt.Errorf("%v\n\nAI Analysis: %s", err, analysis)
+			}
+		}
+		return nil, fmt.Errorf("failed to initialize AI client: %w", err)
 	}
 
-	// Get API key from configuration
-	apiKey := config.GetAPIKey(config.DefaultProvider)
-	if apiKey == "" {
-		return fmt.Errorf("%s: %w (OpenAI API key not found, run 'yolo ai configure' first)", context, err)
-	}
-
-	// Initialize error analyzer
-	errorAnalyzer := ai.NewErrorAnalyzer(apiKey)
-	
-	// Get AI analysis of the error
-	analysis, analyzeErr := errorAnalyzer.AnalyzeError(err, context)
-	if analyzeErr != nil {
-		return fmt.Errorf("%s: %w", context, err)
-	}
-
-	// Print the analysis
-	fmt.Printf("\n❌ %s\n", context)
-	fmt.Println(errorAnalyzer.FormatAnalysis(analysis))
-	
-	return fmt.Errorf("%s: %w", context, err)
+	return aiClient, nil
 }
