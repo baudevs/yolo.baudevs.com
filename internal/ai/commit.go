@@ -28,14 +28,31 @@ func NewCommitAI(apiKey string) (*CommitAI, error) {
 	}, nil
 }
 
+// getDebugDir returns the path to the debug directory
+func (ai *CommitAI) getDebugDir() (string, error) {
+	// Get working directory
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	// Create .yolo-debug in the project root
+	debugDir := filepath.Join(wd, ".yolo-debug")
+	if err := os.MkdirAll(debugDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create debug directory: %w", err)
+	}
+
+	return debugDir, nil
+}
+
 // Debug logs information to both console and file
 func (ai *CommitAI) debug(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	fmt.Println("DEBUG:", msg)
 	
-	debugDir := "/tmp/yolo-debug"
-	if err := os.MkdirAll(debugDir, 0755); err != nil {
-		fmt.Printf("Warning: Could not create debug directory: %v\n", err)
+	debugDir, err := ai.getDebugDir()
+	if err != nil {
+		fmt.Printf("Warning: Could not get debug directory: %v\n", err)
 		return
 	}
 
@@ -170,7 +187,11 @@ func (ai *CommitAI) GenerateCommitMessage(changes string) (string, models.Commit
 	ai.debug("Total changes length: %d bytes", len(changes))
 
 	// Save full changes to file for reference
-	debugDir := "/tmp/yolo-debug"
+	debugDir, err := ai.getDebugDir()
+	if err != nil {
+		return "", models.CommitMessage{}, fmt.Errorf("failed to get debug directory: %w", err)
+	}
+
 	timestamp := time.Now().Unix()
 	changesFile := filepath.Join(debugDir, fmt.Sprintf("changes-%d.txt", timestamp))
 	if err := os.WriteFile(changesFile, []byte(changes), 0644); err != nil {
