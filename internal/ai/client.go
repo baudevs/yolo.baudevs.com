@@ -104,12 +104,12 @@ func (c *Client) GenerateCommitMessage(ctx context.Context, diff string) (string
 
 // checkCredits checks if we have enough credits
 func (c *Client) checkCredits() error {
-	if c.licenseManager == nil {
+	if c.licenseManager == nil || c.licenseManager.GetLicense() == nil {
 		return nil // Using custom API key
 	}
 
 	lic := c.licenseManager.GetLicense()
-	if lic == nil || !lic.IsActive {
+	if !lic.IsActive {
 		return fmt.Errorf("no active license")
 	}
 
@@ -122,7 +122,7 @@ func (c *Client) checkCredits() error {
 
 // deductCredits deducts credits for an API call
 func (c *Client) deductCredits() error {
-	if c.licenseManager == nil {
+	if c.licenseManager == nil || c.licenseManager.GetLicense() == nil {
 		return nil // Using custom API key
 	}
 
