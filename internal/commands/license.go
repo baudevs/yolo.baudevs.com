@@ -2,139 +2,112 @@ package commands
 
 import (
 	"fmt"
-	"os"
+	"time"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/license"
 	"github.com/spf13/cobra"
 )
 
+// NewLicenseCommand returns a new license command
 func NewLicenseCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "license",
-		Short: "Manage your YOLO license",
-		Long: `Manage your YOLO license and credits.
-You can activate a new license, check your status, or purchase more credits.`,
+		Short: "License management",
+		Long:  "Manage your YOLO license and credits",
 	}
 
 	cmd.AddCommand(
 		newLicenseActivateCommand(),
 		newLicenseStatusCommand(),
-		newLicenseCompleteCommand(),
 	)
 
 	return cmd
 }
 
 func newLicenseActivateCommand() *cobra.Command {
-	return &cobra.Command{
+	var key string
+	var planType string
+	var credits int64
+
+	cmd := &cobra.Command{
 		Use:   "activate",
-		Short: "Activate a YOLO license",
-		Long: `Activate a new YOLO license or purchase more credits.
-This will open your browser to complete the purchase.`,
+		Short: "Activate license",
+		Long:  "Activate your YOLO license with a key",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Initialize license manager
-			manager, err := license.NewManager(license.Config{
-				StripeSecretKey:  os.Getenv("STRIPE_SECRET_KEY"),
-				DefaultOpenAIKey: os.Getenv("OPENAI_API_KEY"),
-			})
+			// Create license manager
+			manager, err := license.NewManager()
 			if err != nil {
-				return fmt.Errorf("failed to initialize license manager: %w", err)
+				return fmt.Errorf("failed to create license manager: %w", err)
 			}
 
-			// Create checkout session
-			starterPack := license.GetPackageByType(license.PlanStarter)
-			if starterPack == nil {
-				return fmt.Errorf("failed to get starter package")
+			// Get key from args if not provided as flag
+			if key == "" && len(args) > 0 {
+				key = args[0]
 			}
 
-			url, err := manager.CreateCheckoutSession(*starterPack)
-			if err != nil {
-				return fmt.Errorf("failed to create checkout session: %w", err)
+			// Default to credits plan with 100 credits
+			if planType == "" {
+				planType = "credits"
+			}
+			if credits == 0 {
+				credits = 100
 			}
 
-			fmt.Println("🎉 Opening checkout in your browser...")
-			fmt.Printf("\nIf it doesn't open automatically, visit:\n%s\n", url)
+			// Activate license
+			if err := manager.SaveLicense(&license.License{
+				IsActive:     true,
+				APIKey:       key,
+				PlanType:     planType,
+				Credits:      credits,
+				LastModified: time.Now(),
+			}); err != nil {
+				return fmt.Errorf("failed to activate license: %w", err)
+			}
 
+			fmt.Println(" License activated successfully!")
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&key, "key", "k", "", "License key")
+	cmd.Flags().StringVarP(&planType, "plan", "p", "", "Plan type (credits or unlimited)")
+	cmd.Flags().Int64VarP(&credits, "credits", "c", 0, "Initial credits (for credits plan)")
+
+	return cmd
 }
 
 func newLicenseStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Check license status",
-		Long:  "Check your YOLO license status and remaining credits.",
+		Long:  "Check your YOLO license status and remaining credits",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Initialize license manager
-			manager, err := license.NewManager(license.Config{
-				StripeSecretKey:  os.Getenv("STRIPE_SECRET_KEY"),
-				DefaultOpenAIKey: os.Getenv("OPENAI_API_KEY"),
-			})
+			// Create license manager
+			manager, err := license.NewManager()
 			if err != nil {
-				return fmt.Errorf("failed to initialize license manager: %w", err)
+				return fmt.Errorf("failed to create license manager: %w", err)
 			}
 
-			// Get current license
+			// Get license
 			lic := manager.GetLicense()
-
-			fmt.Println("📝 License Status")
-			fmt.Println("--------------")
-
-			if lic == nil || !lic.IsActive {
-				fmt.Println("❌ No active license")
-				fmt.Println("\nTo get started:")
-				fmt.Println("1. Purchase credits:")
-				fmt.Println("   yolo license activate")
-				fmt.Println("\n2. Or use your own OpenAI key:")
-				fmt.Println("   yolo ai configure --api-key YOUR_API_KEY")
+			if lic == nil {
+				fmt.Println(" No license found")
+				fmt.Println("\nTo get started, activate your license:")
+				fmt.Println("  yolo license activate --key YOUR_LICENSE_KEY")
 				return nil
 			}
 
-			// Show license details
-			fmt.Println("✅ License active")
-			fmt.Printf("Plan: %s\n", lic.PlanType)
-			if !lic.ExpiresAt.IsZero() {
-				fmt.Printf("Expires: %s\n", lic.ExpiresAt.Format("2006-01-02"))
+			if !lic.IsActive {
+				fmt.Println(" License is inactive")
+				return nil
 			}
-			if lic.PlanType == license.PlanUnlimited {
-				fmt.Println("Credits: ♾️  Unlimited")
+
+			fmt.Println(" License is active")
+			if lic.PlanType == "unlimited" {
+				fmt.Println("Credits:  Unlimited")
 			} else {
-				fmt.Printf("Credits: %d remaining\n", lic.CreditsLeft)
+				fmt.Printf("Credits: %d remaining\n", lic.Credits)
 			}
-
-			return nil
-		},
-	}
-}
-
-func newLicenseCompleteCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "complete [session-id]",
-		Short: "Complete license activation",
-		Long: `Complete the license activation process after payment.
-Provide the session ID from the checkout URL to activate your license.`,
-		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID := args[0]
-
-			// Initialize license manager
-			manager, err := license.NewManager(license.Config{
-				StripeSecretKey:  os.Getenv("STRIPE_SECRET_KEY"),
-				DefaultOpenAIKey: os.Getenv("OPENAI_API_KEY"),
-			})
-			if err != nil {
-				return fmt.Errorf("failed to initialize license manager: %w", err)
-			}
-
-			// Activate the license
-			if err := manager.ActivateSubscription(sessionID); err != nil {
-				return fmt.Errorf("failed to activate license: %w", err)
-			}
-
-			fmt.Println("✨ License activated successfully!")
-			fmt.Println("\nVerify your status with:")
-			fmt.Println("  yolo license status")
 
 			return nil
 		},

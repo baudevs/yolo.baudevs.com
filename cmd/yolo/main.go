@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/baudevs/yolo.baudevs.com/cmd"
 	"github.com/baudevs/yolo.baudevs.com/internal/commands"
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
@@ -44,21 +45,25 @@ func init() {
 	// Core commands
 	rootCmd.AddCommand(commands.InitCmd())
 	rootCmd.AddCommand(commands.ExplainCmd())
+	rootCmd.AddCommand(cmd.NewDevCommand())
 	
 	// AI commands
+	rootCmd.AddCommand(commands.NewAICommand())
 	rootCmd.AddCommand(commands.NewCommitCommand())
 	rootCmd.AddCommand(commands.NewAskCommand())
 	
-	// Config management
-	rootCmd.AddCommand(commands.NewAICommand())
-	
 	// Prompt management
-	rootCmd.AddCommand(commands.InitMessagePromptsCmd())
 	rootCmd.AddCommand(commands.NewPromptCommand())
+	rootCmd.AddCommand(commands.InitMessagePromptsCmd())
+	
+	// Project management
+	rootCmd.AddCommand(commands.SprintCmd())
+	rootCmd.AddCommand(commands.EpicCmd())
+	rootCmd.AddCommand(commands.FeatureCmd())
+	rootCmd.AddCommand(commands.TaskCmd())
 	
 	// License management
 	rootCmd.AddCommand(commands.NewLicenseCommand())
-	rootCmd.AddCommand(commands.SprintCmd()) // Add sprint command
 }
 
 func main() {

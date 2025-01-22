@@ -11,7 +11,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/sashabaranov/go-openai v1.17.9
 	github.com/spf13/cobra v1.8.0
-	github.com/stripe/stripe-go/v76 v76.25.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

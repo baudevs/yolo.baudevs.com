@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/baudevs/yolo.baudevs.com/internal/config"
 	"github.com/baudevs/yolo.baudevs.com/internal/messages"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -139,77 +140,115 @@ func ResetMethodologyCmd() *cobra.Command {
 	}
 }
 
-// NewPromptCommand returns the prompt command
 func NewPromptCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "prompt [name]",
-		Short: "Get a predefined prompt",
-		Long: `Get a predefined prompt for various YOLO operations.
-Examples:
-  yolo prompt create-epic
-  yolo prompt add-feature
-  yolo prompt create-task`,
-		Args: cobra.ExactArgs(1),
+	promptCmd := &cobra.Command{
+		Use:   "prompt",
+		Short: "Manage prompts",
+		Long:  "Manage AI prompts and personalities",
+	}
+
+	promptCmd.AddCommand(
+		newPromptListCommand(),
+		newPromptSetCommand(),
+		newPromptPersonalityCommand(),
+	)
+
+	return promptCmd
+}
+
+func newPromptListCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List available prompts",
+		Long:  "List all available prompts and their current values",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			promptName := args[0]
-
-			// Get config directory
-			configDir := filepath.Join(filepath.Join(os.Getenv("HOME"), ".config"), "yolo")
-			promptsFile := filepath.Join(configDir, "settings", "prompts.yml")
-
-			// Load prompts
-			data, err := os.ReadFile(promptsFile)
+			// Load client config
+			clientConfig, err := config.LoadClientConfig()
 			if err != nil {
-				// If file doesn't exist, copy from default location
-				defaultPromptsFile := "/Users/juandavidarroyave/Developer/yolo.baudevs.com/yolo/yolo/settings/prompts.yml"
-				data, err = os.ReadFile(defaultPromptsFile)
-				if err != nil {
-					return fmt.Errorf("failed to read default prompts: %w", err)
-				}
-
-				// Create settings directory
-				settingsDir := filepath.Join(configDir, "settings")
-				if err := os.MkdirAll(settingsDir, 0755); err != nil {
-					return fmt.Errorf("failed to create settings directory: %w", err)
-				}
-
-				// Copy default prompts
-				if err := os.WriteFile(promptsFile, data, 0644); err != nil {
-					return fmt.Errorf("failed to copy default prompts: %w", err)
-				}
+				return fmt.Errorf("failed to load client config: %w", err)
 			}
 
-			// Parse prompts
-			var config struct {
-				Version string `yaml:"version"`
-				Date    string `yaml:"date"`
-				Prompts []struct {
-					Name        string `yaml:"name"`
-					Description string `yaml:"description"`
-					Template    string `yaml:"template"`
-				} `yaml:"prompts"`
-			}
-			if err := yaml.Unmarshal(data, &config); err != nil {
-				return fmt.Errorf("failed to parse prompts: %w", err)
+			fmt.Println("📝 Available Prompts")
+			fmt.Println("-----------------")
+
+			if len(clientConfig.Prompts) == 0 {
+				fmt.Println("No prompts configured")
+				return nil
 			}
 
-			// Find requested prompt
-			for _, prompt := range config.Prompts {
-				if prompt.Name == promptName {
-					fmt.Printf("# %s\n", prompt.Description)
-					fmt.Printf("%s\n", prompt.Template)
-					return nil
-				}
+			for key, value := range clientConfig.Prompts {
+				fmt.Printf("%s:\n%s\n\n", key, value)
 			}
 
-			// List available prompts if not found
-			fmt.Printf("Prompt '%s' not found. Available prompts:\n", promptName)
-			for _, prompt := range config.Prompts {
-				fmt.Printf("  %s - %s\n", prompt.Name, prompt.Description)
-			}
-			return fmt.Errorf("prompt not found")
+			return nil
 		},
 	}
+}
+
+func newPromptSetCommand() *cobra.Command {
+	var key, value string
+
+	cmd := &cobra.Command{
+		Use:   "set",
+		Short: "Set a prompt",
+		Long:  "Set the value for a specific prompt",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Load client config
+			clientConfig, err := config.LoadClientConfig()
+			if err != nil {
+				return fmt.Errorf("failed to load client config: %w", err)
+			}
+
+			// Initialize prompts map if needed
+			if clientConfig.Prompts == nil {
+				clientConfig.Prompts = make(map[string]string)
+			}
+
+			// Set prompt
+			clientConfig.Prompts[key] = value
+
+			// Save config
+			if err := config.SaveClientConfig(clientConfig); err != nil {
+				return fmt.Errorf("failed to save config: %w", err)
+			}
+
+			fmt.Printf("✅ Prompt '%s' updated successfully!\n", key)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&key, "key", "k", "", "Prompt key (e.g., commit, error, ask)")
+	cmd.Flags().StringVarP(&value, "value", "v", "", "Prompt value")
+	cmd.MarkFlagRequired("key")
+	cmd.MarkFlagRequired("value")
+
+	return cmd
+}
+
+func newPromptPersonalityCommand() *cobra.Command {
+	var personality string
+
+	cmd := &cobra.Command{
+		Use:   "personality",
+		Short: "Set AI personality",
+		Long:  "Set the AI personality for responses",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get personality level
+			level := messages.GetPersonalityFromString(personality)
+			if level == messages.Unknown {
+				return fmt.Errorf("invalid personality: %s", personality)
+			}
+
+			// Set personality
+			messages.SetPersonality(level)
+
+			fmt.Printf("✅ AI personality set to: %s\n", personality)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&personality, "type", "t", "", "Personality type (nerdy, rude, unhinged)")
+	cmd.MarkFlagRequired("type")
 
 	return cmd
 }

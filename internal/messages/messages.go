@@ -9,19 +9,62 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// PersonalityLevel defines the tone of messages
+// PersonalityLevel represents the AI's personality level
 type PersonalityLevel int
 
 const (
-	// NerdyClean - Correct and clean but nerdy funny
-	NerdyClean PersonalityLevel = iota + 1
-	// MildlyRude - Correct and mildly eccentric with tones of rudeness
+	// Unknown is an unknown personality level
+	Unknown PersonalityLevel = iota
+	// NerdyClean is a nerdy but clean personality
+	NerdyClean
+	// MildlyRude is a mildly rude personality
 	MildlyRude
-	// UnhingedFunny - Politically incorrect and funny
+	// UnhingedFunny is an unhinged but funny personality
 	UnhingedFunny
 )
 
-var currentLevel PersonalityLevel = NerdyClean
+var (
+	// Current personality level
+	currentPersonality = NerdyClean
+)
+
+// GetPersonality returns the current personality level
+func GetPersonality() PersonalityLevel {
+	return currentPersonality
+}
+
+// SetPersonality sets the personality level
+func SetPersonality(level PersonalityLevel) {
+	currentPersonality = level
+}
+
+// GetPersonalityFromString converts a string to a personality level
+func GetPersonalityFromString(s string) PersonalityLevel {
+	switch strings.ToLower(s) {
+	case "nerdy", "clean":
+		return NerdyClean
+	case "rude", "sassy":
+		return MildlyRude
+	case "unhinged", "funny":
+		return UnhingedFunny
+	default:
+		return Unknown
+	}
+}
+
+// String returns the string representation of a personality level
+func (p PersonalityLevel) String() string {
+	switch p {
+	case NerdyClean:
+		return "nerdy"
+	case MildlyRude:
+		return "rude"
+	case UnhingedFunny:
+		return "unhinged"
+	default:
+		return "unknown"
+	}
+}
 
 // Message represents a message with variants for each personality level
 type Message struct {
@@ -117,16 +160,6 @@ func loadCustomPrompts() {
 	}
 }
 
-// SetPersonality sets the global personality level
-func SetPersonality(level PersonalityLevel) {
-	currentLevel = level
-}
-
-// GetPersonality returns the current personality level
-func GetPersonality() PersonalityLevel {
-	return currentLevel
-}
-
 // Get returns the appropriate message variant based on current personality level
 func Get(key string) string {
 	msg, ok := Messages[key]
@@ -134,7 +167,7 @@ func Get(key string) string {
 		return fmt.Sprintf("Message not found: %s", key)
 	}
 
-	switch currentLevel {
+	switch currentPersonality {
 	case MildlyRude:
 		return msg.MildlyRude
 	case UnhingedFunny:

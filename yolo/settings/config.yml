@@ -1,0 +1,9 @@
+ai_provider: openai
+custom_prompts: false
+folder_structure:
+    - settings
+    - messages/personality
+    - messages/methodology
+    - relationships
+project_name: yolo.baudevs.com
+use_conventional_commits: true

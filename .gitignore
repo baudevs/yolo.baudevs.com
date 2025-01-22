@@ -6,5 +6,3 @@ build/
 .env
 .env.*
 !.env.example
-bin/yolo
-.yolo-debug/
