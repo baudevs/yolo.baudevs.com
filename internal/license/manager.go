@@ -95,25 +95,37 @@ func (m *Manager) ActivateLicense(key string) error {
 
 // SyncCredits syncs credit balance with backend
 func (m *Manager) SyncCredits() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	m.mu.RLock()
+	// Check if we need to sync
 	if m.license == nil || !m.license.IsActive || m.license.CustomerID == "" {
+		m.mu.RUnlock()
 		return nil // Nothing to sync
 	}
 
 	// Only sync every hour
 	if time.Since(m.license.LastSyncTime) < time.Hour {
+		m.mu.RUnlock()
 		return nil
 	}
+	
+	customerID := m.license.CustomerID
+	m.mu.RUnlock()
 
 	// Get credits from backend
-	credits, err := m.apiClient.GetCustomerCredits(m.license.CustomerID)
+	credits, err := m.apiClient.GetCustomerCredits(customerID)
 	if err != nil {
 		return fmt.Errorf("failed to sync credits: %w", err)
 	}
 
 	// Update local credits
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Re-check conditions after acquiring write lock
+	if m.license == nil || !m.license.IsActive || m.license.CustomerID != customerID {
+		return nil
+	}
+	
 	m.license.Credits = credits.Balance
 	m.license.LastSyncTime = time.Now()
 	m.license.LastModified = time.Now()
@@ -123,6 +135,11 @@ func (m *Manager) SyncCredits() error {
 
 // DeductCredits deducts credits from the license
 func (m *Manager) DeductCredits(amount int) error {
+	// First sync credits without holding the write lock
+	if err := m.SyncCredits(); err != nil {
+		return fmt.Errorf("failed to sync credits: %w", err)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -134,11 +151,6 @@ func (m *Manager) DeductCredits(amount int) error {
 	// Unlimited plan doesn't need credit deduction
 	if m.license.PlanType == types.PlanUnlimited {
 		return nil
-	}
-
-	// Sync credits first
-	if err := m.SyncCredits(); err != nil {
-		return fmt.Errorf("failed to sync credits: %w", err)
 	}
 
 	// Convert amount to int64

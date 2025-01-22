@@ -61,6 +61,7 @@ func init() {
 	rootCmd.AddCommand(commands.EpicCmd())
 	rootCmd.AddCommand(commands.FeatureCmd())
 	rootCmd.AddCommand(commands.TaskCmd())
+	rootCmd.AddCommand(commands.GraphCmd) // Added Graph command
 	
 	// License management
 	rootCmd.AddCommand(commands.NewLicenseCommand())
