@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/license"
+	"github.com/baudevs/yolo.baudevs.com/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -26,8 +26,6 @@ func NewLicenseCommand() *cobra.Command {
 
 func newLicenseActivateCommand() *cobra.Command {
 	var key string
-	var planType string
-	var credits int64
 
 	cmd := &cobra.Command{
 		Use:   "activate",
@@ -45,22 +43,12 @@ func newLicenseActivateCommand() *cobra.Command {
 				key = args[0]
 			}
 
-			// Default to credits plan with 100 credits
-			if planType == "" {
-				planType = "credits"
-			}
-			if credits == 0 {
-				credits = 100
+			if key == "" {
+				return fmt.Errorf("license key is required")
 			}
 
-			// Activate license
-			if err := manager.SaveLicense(&license.License{
-				IsActive:     true,
-				APIKey:       key,
-				PlanType:     planType,
-				Credits:      credits,
-				LastModified: time.Now(),
-			}); err != nil {
+			// Activate license with backend
+			if err := manager.ActivateLicense(key); err != nil {
 				return fmt.Errorf("failed to activate license: %w", err)
 			}
 
@@ -70,8 +58,6 @@ func newLicenseActivateCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&key, "key", "k", "", "License key")
-	cmd.Flags().StringVarP(&planType, "plan", "p", "", "Plan type (credits or unlimited)")
-	cmd.Flags().Int64VarP(&credits, "credits", "c", 0, "Initial credits (for credits plan)")
 
 	return cmd
 }
@@ -102,8 +88,13 @@ func newLicenseStatusCommand() *cobra.Command {
 				return nil
 			}
 
+			// Sync credits first
+			if err := manager.SyncCredits(); err != nil {
+				fmt.Printf(" Warning: Failed to sync credits: %v\n", err)
+			}
+
 			fmt.Println(" License is active")
-			if lic.PlanType == "unlimited" {
+			if lic.PlanType == types.PlanUnlimited {
 				fmt.Println("Credits:  Unlimited")
 			} else {
 				fmt.Printf("Credits: %d remaining\n", lic.Credits)

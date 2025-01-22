@@ -7,29 +7,47 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/baudevs/yolo.baudevs.com/internal/api"
+	"github.com/baudevs/yolo.baudevs.com/internal/config"
+	"github.com/baudevs/yolo.baudevs.com/internal/types"
 )
 
 // Manager handles license operations
 type Manager struct {
-	mu      sync.RWMutex
-	license *License
+	mu         sync.RWMutex
+	license    *License
+	apiClient  *api.Client
+	configPath string
 }
 
 // License represents a user's license
 type License struct {
-	IsActive     bool      `json:"is_active"`
-	APIKey       string    `json:"api_key"`
-	PlanType     string    `json:"plan_type"` // "unlimited" or "credits"
-	Credits      int64     `json:"credits"`
-	LastModified time.Time `json:"last_modified"`
+	IsActive      bool          `json:"is_active"`
+	APIKey        string        `json:"api_key"`
+	PlanType      types.PlanType `json:"plan_type"` // "unlimited" or "credits"
+	Credits       int64         `json:"credits"`
+	LastModified  time.Time     `json:"last_modified"`
+	CustomerID    string        `json:"customer_id,omitempty"`
+	LastSyncTime  time.Time     `json:"last_sync_time,omitempty"`
 }
 
 // NewManager creates a new license manager
 func NewManager() (*Manager, error) {
-	manager := &Manager{}
+	// Load config to get API endpoint
+	cfg, err := config.LoadClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	manager := &Manager{
+		apiClient: api.NewClient(cfg.APIEndpoint),
+	}
+	
 	if err := manager.loadLicense(); err != nil {
 		return nil, fmt.Errorf("failed to load license: %w", err)
 	}
+	
 	return manager, nil
 }
 
@@ -52,6 +70,57 @@ func (m *Manager) SaveLicense(license *License) error {
 	return m.saveLicense()
 }
 
+// ActivateLicense activates a license with the backend
+func (m *Manager) ActivateLicense(key string) error {
+	// Validate license with backend
+	license, err := m.apiClient.ActivateLicense(key)
+	if err != nil {
+		return fmt.Errorf("failed to activate license: %w", err)
+	}
+
+	// Convert API license to local license
+	localLicense := &License{
+		IsActive:     true,
+		APIKey:       key,
+		PlanType:     license.PlanType,
+		Credits:      license.Credits,
+		CustomerID:   license.CustomerID,
+		LastModified: time.Now(),
+		LastSyncTime: time.Now(),
+	}
+
+	// Save locally
+	return m.SaveLicense(localLicense)
+}
+
+// SyncCredits syncs credit balance with backend
+func (m *Manager) SyncCredits() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.license == nil || !m.license.IsActive || m.license.CustomerID == "" {
+		return nil // Nothing to sync
+	}
+
+	// Only sync every hour
+	if time.Since(m.license.LastSyncTime) < time.Hour {
+		return nil
+	}
+
+	// Get credits from backend
+	credits, err := m.apiClient.GetCustomerCredits(m.license.CustomerID)
+	if err != nil {
+		return fmt.Errorf("failed to sync credits: %w", err)
+	}
+
+	// Update local credits
+	m.license.Credits = credits.Balance
+	m.license.LastSyncTime = time.Now()
+	m.license.LastModified = time.Now()
+
+	return m.saveLicense()
+}
+
 // DeductCredits deducts credits from the license
 func (m *Manager) DeductCredits(amount int) error {
 	m.mu.Lock()
@@ -63,8 +132,13 @@ func (m *Manager) DeductCredits(amount int) error {
 	}
 
 	// Unlimited plan doesn't need credit deduction
-	if m.license.PlanType == "unlimited" {
+	if m.license.PlanType == types.PlanUnlimited {
 		return nil
+	}
+
+	// Sync credits first
+	if err := m.SyncCredits(); err != nil {
+		return fmt.Errorf("failed to sync credits: %w", err)
 	}
 
 	// Convert amount to int64
@@ -75,11 +149,20 @@ func (m *Manager) DeductCredits(amount int) error {
 		return fmt.Errorf("insufficient credits: have %d, need %d", m.license.Credits, credits)
 	}
 
-	// Deduct credits
-	m.license.Credits -= credits
+	// Update credits in backend first
+	if m.license.CustomerID != "" {
+		if err := m.apiClient.UpdateCustomerCredits(m.license.CustomerID, &types.Credits{
+			Balance: m.license.Credits - credits,
+			UpdatedAt: time.Now(),
+		}); err != nil {
+			return fmt.Errorf("failed to update credits: %w", err)
+		}
+	}
 
-	// Update last modified time
+	// Deduct credits locally
+	m.license.Credits -= credits
 	m.license.LastModified = time.Now()
+	m.license.LastSyncTime = time.Now()
 
 	// Save updated license
 	return m.saveLicense()

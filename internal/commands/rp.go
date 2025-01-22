@@ -21,6 +21,7 @@ type Prompts struct {
 	FeatureDocumentation string `yaml:"feature_documentation"`
 	TaskDocumentation    string `yaml:"task_documentation"`
 	UpdateHistory        string `yaml:"update_history"`
+	Methodology         string `yaml:"methodology"`
 }
 
 func PromptCmd() *cobra.Command {
@@ -40,9 +41,43 @@ These prompts are designed to help LLMs understand and follow YOLO methodology.`
 		promptCopyCmd("feature", "Copy the feature documentation prompt", func(p Prompts) string { return p.FeatureDocumentation }),
 		promptCopyCmd("task", "Copy the task documentation prompt", func(p Prompts) string { return p.TaskDocumentation }),
 		promptCopyCmd("history", "Copy the history update prompt", func(p Prompts) string { return p.UpdateHistory }),
+		promptCopyCmd("methodology", "Copy the YOLO methodology explanation", func(p Prompts) string { return p.Methodology }),
+		newResetMethodologyCmd(),
 	)
 
 	return cmd
+}
+
+func newResetMethodologyCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "reset-methodology",
+		Short: "Reset methodology prompts to defaults",
+		Long:  "Reset all methodology prompts to their default values",
+		Run: func(cmd *cobra.Command, args []string) {
+			// Get home directory
+			home, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Printf("Error getting home directory: %v\n", err)
+				return
+			}
+
+			// Delete prompts file
+			promptsFile := filepath.Join(home, ".config", "yolo", "methodology_prompts.yml")
+			if err := os.Remove(promptsFile); err != nil && !os.IsNotExist(err) {
+				fmt.Printf("Error removing prompts file: %v\n", err)
+				return
+			}
+
+			// Load default prompts (this will recreate the file)
+			if _, err := loadPrompts(); err != nil {
+				fmt.Printf("Error resetting prompts: %v\n", err)
+				return
+			}
+
+			success := color.New(color.FgGreen).SprintFunc()
+			fmt.Printf("%s Methodology prompts reset to defaults!\n", success("✓"))
+		},
+	}
 }
 
 func promptCopyCmd(use string, short string, promptSelector func(Prompts) string) *cobra.Command {
@@ -99,45 +134,100 @@ Update the changelog following YOLO methodology:
 - Reference relevant issues/PRs`,
 			UpdateReadme: `# README Update Prompt
 Update the README following YOLO methodology:
-- Project overview and purpose
+- Project overview
 - Installation instructions
 - Usage examples
-- Configuration options
 - Contributing guidelines`,
 			EpicDocumentation: `# Epic Documentation Prompt
-Document epics following YOLO methodology:
+Document this epic following YOLO methodology:
 - High-level overview
 - Business value
 - Success criteria
-- Dependencies and risks
-- Timeline and milestones`,
+- Dependencies and risks`,
 			FeatureDocumentation: `# Feature Documentation Prompt
-Document features following YOLO methodology:
-- Feature description
-- Technical requirements
+Document this feature following YOLO methodology:
+- Purpose and scope
+- Technical design
 - Implementation details
-- Testing strategy
-- Release notes`,
+- Testing requirements`,
 			TaskDocumentation: `# Task Documentation Prompt
-Document tasks following YOLO methodology:
-- Clear objectives
+Document this task following YOLO methodology:
+- Specific objective
 - Implementation steps
 - Acceptance criteria
-- Dependencies
-- Time estimates`,
+- Dependencies`,
 			UpdateHistory: `# History Update Prompt
-Update history following YOLO methodology:
-- Chronological order
-- Key milestones
-- Major decisions
-- Lessons learned`,
+Update the project history following YOLO methodology:
+- Version information
+- Feature additions
+- Breaking changes
+- Migration guides`,
+			Methodology: `# YOLO Methodology
+
+YOLO (You Only Live Once) is a modern software development methodology that combines the best practices of agile development with a focus on developer happiness and productivity.
+
+Core Principles:
+1. Fast Iterations
+   - Rapid development cycles
+   - Quick feedback loops
+   - Continuous integration
+
+2. Developer Experience
+   - Intuitive tooling
+   - Minimal boilerplate
+   - Clear documentation
+
+3. AI Integration
+   - Context-aware assistance
+   - Smart code generation
+   - Automated documentation
+
+4. Project Organization
+   - Clear structure
+   - Consistent patterns
+   - Easy navigation
+
+5. Quality Focus
+   - Automated testing
+   - Code reviews
+   - Performance monitoring
+
+Best Practices:
+1. Use descriptive names
+2. Write clear documentation
+3. Keep components small
+4. Test thoroughly
+5. Review regularly
+
+Project Structure:
+/project
+  ├── .yolo/          # YOLO configuration
+  ├── docs/           # Documentation
+  ├── src/            # Source code
+  ├── tests/          # Test files
+  └── README.md       # Project overview
+
+Common Commands:
+- yolo init          # Initialize project
+- yolo commit        # Smart commit
+- yolo prompt        # Get prompts
+- yolo ask          # AI assistance
+
+This methodology promotes:
+- Developer productivity
+- Code quality
+- Project maintainability
+- Team collaboration
+- Continuous improvement`,
 		}
 
+		// Marshal default prompts
 		data, err := yaml.Marshal(defaultPrompts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal default prompts: %w", err)
 		}
 
+		// Write default prompts file
 		if err := os.WriteFile(promptsFile, data, 0644); err != nil {
 			return nil, fmt.Errorf("failed to write default prompts: %w", err)
 		}
@@ -145,15 +235,16 @@ Update history following YOLO methodology:
 		return &defaultPrompts, nil
 	}
 
-	// Read existing prompts
+	// Read existing prompts file
 	data, err := os.ReadFile(promptsFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read prompts file: %w", err)
 	}
 
+	// Unmarshal prompts
 	var prompts Prompts
 	if err := yaml.Unmarshal(data, &prompts); err != nil {
-		return nil, fmt.Errorf("failed to parse prompts file: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal prompts: %w", err)
 	}
 
 	return &prompts, nil
@@ -161,7 +252,6 @@ Update history following YOLO methodology:
 
 func copyToClipboard(text string) error {
 	var cmd *exec.Cmd
-	
 	switch runtime.GOOS {
 	case "darwin":
 		cmd = exec.Command("pbcopy")
@@ -175,4 +265,4 @@ func copyToClipboard(text string) error {
 
 	cmd.Stdin = strings.NewReader(text)
 	return cmd.Run()
-} 
+}
