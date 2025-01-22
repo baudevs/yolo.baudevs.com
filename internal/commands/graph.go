@@ -90,8 +90,11 @@ func runGraph(cmd *cobra.Command, args []string) error {
 	r.Use(middleware.Recoverer)
 
 	// Serve static files from embedded filesystem with correct MIME types
-	r.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/static/")
+	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
 		
 		// Set correct MIME types
 		if strings.HasSuffix(path, ".js") {
@@ -102,28 +105,18 @@ func runGraph(cmd *cobra.Command, args []string) error {
 			w.Header().Set("Content-Type", "text/html")
 		}
 
-		content, err := web.WebFiles.ReadFile("static/" + path)
+		content, err := web.WebFiles.ReadFile(path)
 		if err != nil {
 			http.Error(w, "File not found", http.StatusNotFound)
 			return
 		}
+
 		w.Write(content)
 	})
 
 	// API routes
 	r.Get("/api/nodes", handleGetNodes)
 	r.Get("/ws", handleWebSocket)
-
-	// Serve index.html for all other routes
-	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
-		indexHTML, err := web.WebFiles.ReadFile("static/index.html")
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(indexHTML)
-	})
 
 	// Start server
 	port := 4010
