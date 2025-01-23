@@ -11,6 +11,7 @@ import (
 	"github.com/baudevs/yolo.baudevs.com/internal/ai"
 	"github.com/baudevs/yolo.baudevs.com/internal/config"
 	"github.com/baudevs/yolo.baudevs.com/internal/license"
+	"github.com/baudevs/yolo.baudevs.com/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -95,7 +96,7 @@ Each task should be specific, actionable, and contribute to the epic's completio
 
 	// Create epic file
 	status, _ := cmd.Flags().GetString("status")
-	epicID := generateID("E")
+	epicID := utils.GenerateID("E")
 	epicPath := filepath.Join("yolo", "epics", fmt.Sprintf("%s.md", epicID))
 
 	epicFileContent := fmt.Sprintf(`# [%s] %s
@@ -142,7 +143,7 @@ Last Updated: %s
 		taskDescription := strings.TrimSpace(taskParts[1])
 
 		// Create task file
-		taskID := generateID("T")
+		taskID := utils.GenerateID("T")
 		taskPath := filepath.Join("yolo", "tasks", fmt.Sprintf("%s.md", taskID))
 
 		taskFileContent := fmt.Sprintf(`# [%s] %s
@@ -174,29 +175,4 @@ Epic: [%s] %s
 	fmt.Println("3. See your progress in 3D with 'yolo graph'")
 
 	return nil
-}
-
-func generateID(prefix string) string {
-	// Get list of existing files
-	files, err := filepath.Glob(filepath.Join("yolo", strings.ToLower(prefix)+"*", "*.md"))
-	if err != nil {
-		return fmt.Sprintf("%s001", prefix)
-	}
-
-	// Find highest number
-	maxNum := 0
-	for _, file := range files {
-		base := filepath.Base(file)
-		if len(base) < 4 {
-			continue
-		}
-		numStr := strings.TrimPrefix(strings.TrimSuffix(base, ".md"), prefix)
-		num := 0
-		fmt.Sscanf(numStr, "%d", &num)
-		if num > maxNum {
-			maxNum = num
-		}
-	}
-
-	return fmt.Sprintf("%s%03d", prefix, maxNum+1)
 }
