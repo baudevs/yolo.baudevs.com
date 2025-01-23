@@ -5,25 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/baudevs/yolo.baudevs.com/internal/ai"
 	"github.com/baudevs/yolo.baudevs.com/internal/config"
 	"github.com/baudevs/yolo.baudevs.com/internal/license"
+	"github.com/baudevs/yolo.baudevs.com/internal/relationships"
 	"github.com/baudevs/yolo.baudevs.com/internal/utils"
 	"github.com/spf13/cobra"
 )
-
-type Epic struct {
-	ID          string
-	Title       string
-	Description string
-	Status      string
-	Path        string
-	Content     string
-}
 
 func TaskCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -70,74 +61,113 @@ func runTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create AI client: %w", err)
 	}
 
-	// Load existing epics
-	epics, err := loadEpics()
+	// Create relationship manager
+	relManager := relationships.NewManager(aiClient)
+
+	// Load all work items
+	items, err := relManager.LoadWorkItems(relationships.Epic, relationships.Feature, relationships.Task)
 	if err != nil {
-		return fmt.Errorf("failed to load epics: %w", err)
+		return fmt.Errorf("failed to load work items: %w", err)
 	}
 
-	var targetEpic *Epic
+	// Find or create parent epic
+	var parentEpic *relationships.WorkItem
+	var createNewEpic bool
+
 	epicFlag, _ := cmd.Flags().GetString("epic")
-	
+
 	if epicFlag != "" {
 		// Use specified epic
-		for _, epic := range epics {
-			if epic.ID == epicFlag {
-				targetEpic = &epic
+		for _, item := range items {
+			if item.Type == relationships.Epic && item.ID == epicFlag {
+				parentEpic = &item
 				break
 			}
 		}
-		if targetEpic == nil {
+		if parentEpic == nil {
 			return fmt.Errorf("specified epic %s not found", epicFlag)
 		}
 	} else {
-		// Ask AI to find the best matching epic
-		epicPrompt := fmt.Sprintf(`Given this task description: "%s"
+		// Let AI suggest parent epic
+		fmt.Println(" Finding the best epic match...")
+		parentEpic, createNewEpic, err = relManager.FindOrCreateParent(context.Background(), relationships.Task, description, items)
+		if err != nil {
+			return fmt.Errorf("failed to find parent epic: %w", err)
+		}
+	}
 
-Analyze these existing epics and determine which one is the most relevant to link the task to. Consider the epic's goals, scope, and existing features. If none are relevant, respond with "NONE".
+	// If we need to create a new epic, do it now
+	if createNewEpic {
+		fmt.Println(" Creating new parent epic...")
+		epicPrompt := fmt.Sprintf(`Create an epic description for a task described as:
+"%s"
 
-Epics:
+The epic should:
+1. Be broader in scope than the task
+2. Provide implementation context
+3. Allow for related tasks
+
+Respond with a concise but comprehensive epic description.`, description)
+
+		epicContent, err := aiClient.Ask(context.Background(), epicPrompt)
+		if err != nil {
+			return fmt.Errorf("failed to generate epic content: %w", err)
+		}
+
+		epicID := utils.GenerateID("E")
+		epicTitle := fmt.Sprintf("Epic for %s", description)
+		epicPath := filepath.Join("yolo", "epics", fmt.Sprintf("%s.md", epicID))
+
+		epicFileContent := fmt.Sprintf(`# [%s] %s
+
+## Status: planning
+Created: %s
+Last Updated: %s
+## Description
 %s
 
-Respond with just the epic ID (e.g., "E001") or "NONE" if no epic is relevant.`, description, formatEpicsForAI(epics))
+## Success Criteria
+- [ ] Epic implemented
+- [ ] Tests added
+- [ ] Documentation updated
+- [ ] Code reviewed
 
-		fmt.Println(" Finding the best epic match...")
-		epicMatch, err := aiClient.Ask(context.Background(), epicPrompt)
-		if err != nil {
-			return fmt.Errorf("failed to match epic: %w", err)
+## Relationships
+<!-- YOLO-LINKS-START -->
+<!-- YOLO-LINKS-END -->
+`, epicID, epicTitle,
+   time.Now().Format("2006-01-02"),
+   time.Now().Format("2006-01-02"),
+   strings.TrimSpace(epicContent))
+
+		if err := os.MkdirAll(filepath.Dir(epicPath), 0755); err != nil {
+			return fmt.Errorf("failed to create epics directory: %w", err)
 		}
 
-		epicMatch = strings.TrimSpace(epicMatch)
-		if epicMatch != "NONE" {
-			for _, epic := range epics {
-				if epic.ID == epicMatch {
-					targetEpic = &epic
-					break
-				}
-			}
+		if err := os.WriteFile(epicPath, []byte(epicFileContent), 0644); err != nil {
+			return fmt.Errorf("failed to write epic file: %w", err)
 		}
+
+		parentEpic = &relationships.WorkItem{
+			Type:        relationships.Epic,
+			ID:          epicID,
+			Title:       epicTitle,
+			Description: epicContent,
+			Status:      "planning",
+			Path:        epicPath,
+			Content:     epicFileContent,
+		}
+		items = append(items, *parentEpic)
 	}
 
-	// Generate detailed task description
-	var epicContext string
-	if targetEpic != nil {
-		epicContext = targetEpic.Description
-	} else {
-		epicContext = "No specific epic context"
-	}
-	
+	// Generate task content
 	taskPrompt := fmt.Sprintf(`Create a detailed task description for:
 "%s"
 
-The task should be specific, actionable, and include clear success criteria.
-
-If this epic is relevant, consider its context:
+Consider this context:
 %s
 
-Respond with a concise but detailed description that includes:
-1. The specific work to be done
-2. Any technical considerations
-3. Clear success criteria`, description, epicContext)
+The description should be specific, actionable, and include clear success criteria.`, description, parentEpic.Description)
 
 	fmt.Println(" Generating detailed task description...")
 	taskContent, err := aiClient.Ask(context.Background(), taskPrompt)
@@ -150,22 +180,12 @@ Respond with a concise but detailed description that includes:
 	taskID := utils.GenerateID("T")
 	taskPath := filepath.Join("yolo", "tasks", fmt.Sprintf("%s.md", taskID))
 
-	var epicHeader, parentLink string
-	if targetEpic != nil {
-		epicHeader = fmt.Sprintf("Epic: [%s] %s", targetEpic.ID, targetEpic.Title)
-		parentLink = fmt.Sprintf("[%s] %s", targetEpic.ID, targetEpic.Title)
-	} else {
-		epicHeader = "Epic: None"
-		parentLink = "None"
-	}
-
 	taskFileContent := fmt.Sprintf(`# [%s] %s
 
 ## Status: %s
 Created: %s
 Last Updated: %s
-%s
-
+Epic: [%s] %s
 ## Description
 %s
 
@@ -177,14 +197,14 @@ Last Updated: %s
 
 ## Relationships
 <!-- YOLO-LINKS-START -->
-- Parent: %s
+- Parent Epic: [%s] %s
 <!-- YOLO-LINKS-END -->
-`, taskID, description, status, 
-   time.Now().Format("2006-01-02"), 
+`, taskID, description, status,
    time.Now().Format("2006-01-02"),
-   epicHeader,
+   time.Now().Format("2006-01-02"),
+   parentEpic.ID, parentEpic.Title,
    strings.TrimSpace(taskContent),
-   parentLink)
+   parentEpic.ID, parentEpic.Title)
 
 	if err := os.MkdirAll(filepath.Dir(taskPath), 0755); err != nil {
 		return fmt.Errorf("failed to create tasks directory: %w", err)
@@ -194,102 +214,29 @@ Last Updated: %s
 		return fmt.Errorf("failed to write task file: %w", err)
 	}
 
-	// Update epic file if we have a target epic
-	if targetEpic != nil {
-		if err := updateEpicRelationships(targetEpic.Path, taskID, description); err != nil {
-			return fmt.Errorf("failed to update epic relationships: %w", err)
-		}
+	currentTask := relationships.WorkItem{
+		Type:        relationships.Task,
+		ID:          taskID,
+		Title:       description,
+		Description: taskContent,
+		Status:      status,
+		Path:        taskPath,
+		Content:     taskFileContent,
+	}
+
+	// Update relationships in all files
+	fmt.Println(" Updating relationships...")
+
+	// Update epic relationships
+	epicRelations := map[relationships.WorkItemType][]relationships.WorkItem{
+		relationships.Task: {currentTask},
+	}
+	if err := relManager.UpdateRelationships(parentEpic.Path, epicRelations); err != nil {
+		return fmt.Errorf("failed to update epic relationships: %w", err)
 	}
 
 	fmt.Printf("\n Task %s created successfully!\n", taskID)
-	if targetEpic != nil {
-		fmt.Printf(" Linked to epic: [%s] %s\n", targetEpic.ID, targetEpic.Title)
-	}
+	fmt.Printf(" Linked to epic: [%s] %s\n", parentEpic.ID, parentEpic.Title)
 
 	return nil
-}
-
-func loadEpics() ([]Epic, error) {
-	epicsDir := filepath.Join("yolo", "epics")
-	files, err := filepath.Glob(filepath.Join(epicsDir, "*.md"))
-	if err != nil {
-		return nil, err
-	}
-
-	var epics []Epic
-	for _, file := range files {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-
-		contentStr := string(content)
-		idMatch := regexp.MustCompile(`# \[(E\d+)\] (.+)`).FindStringSubmatch(contentStr)
-		if len(idMatch) < 3 {
-			continue
-		}
-
-		descriptionMatch := regexp.MustCompile(`## Description\n((?s).+?)(?:\n#|$)`).FindStringSubmatch(contentStr)
-		description := ""
-		if len(descriptionMatch) >= 2 {
-			description = strings.TrimSpace(descriptionMatch[1])
-		}
-
-		statusMatch := regexp.MustCompile(`## Status: (.+)`).FindStringSubmatch(contentStr)
-		status := "unknown"
-		if len(statusMatch) >= 2 {
-			status = strings.TrimSpace(statusMatch[1])
-		}
-
-		epics = append(epics, Epic{
-			ID:          idMatch[1],
-			Title:       strings.TrimSpace(idMatch[2]),
-			Description: description,
-			Status:      status,
-			Path:        file,
-			Content:     contentStr,
-		})
-	}
-
-	return epics, nil
-}
-
-func formatEpicsForAI(epics []Epic) string {
-	var sb strings.Builder
-	for _, epic := range epics {
-		fmt.Fprintf(&sb, "[%s] %s\nStatus: %s\n%s\n\n", 
-			epic.ID, epic.Title, epic.Status, epic.Description)
-	}
-	return sb.String()
-}
-
-func updateEpicRelationships(epicPath, taskID, taskTitle string) error {
-	content, err := os.ReadFile(epicPath)
-	if err != nil {
-		return err
-	}
-
-	contentStr := string(content)
-	relationSection := "## Relationships\n<!-- YOLO-LINKS-START -->\n"
-	
-	// Check if relationships section exists
-	if !strings.Contains(contentStr, relationSection) {
-		// Add it before the last section
-		contentStr = strings.TrimSpace(contentStr) + "\n\n" + relationSection + "<!-- YOLO-LINKS-END -->\n"
-	}
-
-	// Update the relationships section
-	re := regexp.MustCompile(`(## Relationships\n<!-- YOLO-LINKS-START -->.*?)(<!-- YOLO-LINKS-END -->)`)
-	updatedContent := re.ReplaceAllStringFunc(contentStr, func(match string) string {
-		// Extract existing content
-		existing := re.FindStringSubmatch(match)[1]
-		// Add new task if not already present
-		taskLink := fmt.Sprintf("- Task: [%s] %s\n", taskID, taskTitle)
-		if !strings.Contains(existing, taskLink) {
-			existing += taskLink
-		}
-		return existing + "<!-- YOLO-LINKS-END -->"
-	})
-
-	return os.WriteFile(epicPath, []byte(updatedContent), 0644)
 }
