@@ -71,9 +71,18 @@ func (ai *CommitAI) debug(format string, args ...interface{}) {
 }
 
 // analyzeChunk sends a portion of changes to OpenAI and returns the analysis
-func (ai *CommitAI) analyzeChunk(changes string, chunkNum, totalChunks int) (models.CommitMessage, error) {
+func (ai *CommitAI) analyzeChunk(ctx context.Context, changes string, chunkNum, totalChunks int, isSummary bool) (models.CommitMessage, error) {
+	var contextNote string
+	if isSummary {
+		contextNote = "This is a summarized view showing only file names and line counts."
+	} else {
+		contextNote = "This is a full diff showing actual code changes."
+	}
+
 	prompt := fmt.Sprintf(`Analyze the following Git changes (part %d of %d) and generate a conventional commit message in JSON format.
 Note: Focus on understanding the changes in this chunk, a final summary will be generated later.
+
+%s
 
 Follow these rules:
 1. Use semantic commit types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
@@ -94,12 +103,12 @@ The response must be a valid JSON object with this structure:
 }
 
 Changes to analyze:
-%s`, chunkNum, totalChunks, changes)
+%s`, chunkNum, totalChunks, contextNote, changes)
 
 	ai.debug("Analyzing chunk %d of %d (length: %d bytes)", chunkNum, totalChunks, len(changes))
 
 	resp, err := ai.client.CreateChatCompletion(
-		context.Background(),
+		ctx,
 		openai.ChatCompletionRequest{
 			Model: openai.GPT4,
 			Messages: []openai.ChatCompletionMessage{
@@ -130,15 +139,20 @@ Changes to analyze:
 }
 
 // summarizeAnalyses combines multiple chunk analyses into a final commit message
-func (ai *CommitAI) summarizeAnalyses(analyses []models.CommitMessage) (models.CommitMessage, error) {
+func (ai *CommitAI) summarizeAnalyses(ctx context.Context, analyses []models.CommitMessage, hadToTruncate bool) (models.CommitMessage, error) {
 	// Convert analyses to a JSON array for the AI to process
 	analysesJSON, err := json.MarshalIndent(analyses, "", "  ")
 	if err != nil {
 		return models.CommitMessage{}, fmt.Errorf("failed to marshal analyses: %w", err)
 	}
 
+	var truncationNote string
+	if hadToTruncate {
+		truncationNote = "\nNote: Some changes were too large and had to be truncated."
+	}
+
 	prompt := fmt.Sprintf(`Analyze these commit message summaries and create a single, comprehensive commit message.
-The summaries represent different parts of a large change set.
+The summaries represent different parts of a large change set.%s
 
 Previous analyses:
 %s
@@ -150,10 +164,10 @@ Generate a final commit message that:
 4. Preserves any breaking changes, issue references, or co-authors
 5. Follows conventional commit format
 
-Respond with a single JSON object using the same structure as the input.`, string(analysesJSON))
+Respond with a single JSON object using the same structure as the input.`, truncationNote, string(analysesJSON))
 
 	resp, err := ai.client.CreateChatCompletion(
-		context.Background(),
+		ctx,
 		openai.ChatCompletionRequest{
 			Model: openai.GPT4,
 			Messages: []openai.ChatCompletionMessage{
@@ -184,14 +198,14 @@ Respond with a single JSON object using the same structure as the input.`, strin
 }
 
 // GenerateCommitMessage generates a commit message based on the changes
-func (ai *CommitAI) GenerateCommitMessage(changes string) (string, models.CommitMessage, error) {
+func (ai *CommitAI) GenerateCommitMessage(ctx context.Context, changes string) (string, bool, error) {
 	ai.debug("Starting commit message generation")
 	ai.debug("Total changes length: %d bytes", len(changes))
 
 	// Save full changes to file for reference
 	debugDir, err := ai.getDebugDir()
 	if err != nil {
-		return "", models.CommitMessage{}, fmt.Errorf("failed to get debug directory: %w", err)
+		return "", false, fmt.Errorf("failed to get debug directory: %w", err)
 	}
 
 	timestamp := time.Now().Unix()
@@ -199,6 +213,9 @@ func (ai *CommitAI) GenerateCommitMessage(changes string) (string, models.Commit
 	if err := os.WriteFile(changesFile, []byte(changes), 0644); err != nil {
 		ai.debug("Warning: Could not write changes file: %v", err)
 	}
+
+	// Check if this is a summarized diff
+	isSummary := strings.HasPrefix(changes, "Changed files summary:")
 
 	// Split changes into smaller chunks
 	const maxChunkSize = 6000 // Conservative size to stay under token limit
@@ -226,73 +243,96 @@ func (ai *CommitAI) GenerateCommitMessage(changes string) (string, models.Commit
 
 	ai.debug("Split changes into %d chunks", len(chunks))
 
+	// If we have too many chunks, only process the most important ones
+	const maxChunks = 5
+	hadToTruncate := false
+	
+	if len(chunks) > maxChunks && !isSummary {
+		hadToTruncate = true
+		ai.debug("Too many chunks (%d), truncating to %d", len(chunks), maxChunks)
+		
+		// Keep first two and last two chunks
+		truncatedChunks := make([]string, 0, maxChunks)
+		truncatedChunks = append(truncatedChunks, chunks[0:2]...)
+		
+		// Add a summary chunk in the middle
+		summary := fmt.Sprintf("\n... %d chunks truncated ...\n", len(chunks)-4)
+		truncatedChunks = append(truncatedChunks, summary)
+		
+		truncatedChunks = append(truncatedChunks, chunks[len(chunks)-2:]...)
+		chunks = truncatedChunks
+	}
+
 	// Analyze each chunk
 	var analyses []models.CommitMessage
 	for i, chunk := range chunks {
 		chunkNum := i + 1
-		analysis, err := ai.analyzeChunk(chunk, chunkNum, len(chunks))
+		analysis, err := ai.analyzeChunk(ctx, chunk, chunkNum, len(chunks), isSummary)
 		if err != nil {
-			return "", models.CommitMessage{}, fmt.Errorf("failed to analyze chunk %d: %w", chunkNum, err)
+			return "", hadToTruncate, fmt.Errorf("failed to analyze chunk %d: %w", chunkNum, err)
 		}
 		analyses = append(analyses, analysis)
 		ai.debug("Successfully analyzed chunk %d", chunkNum)
 	}
 
 	// Generate final summary
-	if len(analyses) == 1 {
-		// If only one chunk, use its analysis directly
+	if len(analyses) == 1 && !hadToTruncate {
+		// If only one chunk and no truncation, use its analysis directly
 		formattedMsg := ai.FormatCommitMessage(analyses[0])
 		ai.debug("Generated commit message from single chunk: %s", formattedMsg)
-		return formattedMsg, analyses[0], nil
+		return formattedMsg, false, nil
 	}
 
 	// Combine analyses into final message
-	finalMsg, err := ai.summarizeAnalyses(analyses)
+	finalMsg, err := ai.summarizeAnalyses(ctx, analyses, hadToTruncate)
 	if err != nil {
-		return "", models.CommitMessage{}, fmt.Errorf("failed to generate final summary: %w", err)
+		return "", hadToTruncate, fmt.Errorf("failed to generate final summary: %w", err)
 	}
 
 	formattedMsg := ai.FormatCommitMessage(finalMsg)
 	ai.debug("Generated final commit message: %s", formattedMsg)
-	return formattedMsg, finalMsg, nil
+	return formattedMsg, hadToTruncate, nil
 }
 
 // FormatCommitMessage formats a CommitMessage into a conventional commit string
 func (ai *CommitAI) FormatCommitMessage(msg models.CommitMessage) string {
-	var parts []string
+	var sb strings.Builder
 
-	// Add type
-	parts = append(parts, msg.Type)
-
-	// Add scope if present
+	// Write type and scope
+	sb.WriteString(msg.Type)
 	if msg.Scope != "" {
-		parts = append(parts, fmt.Sprintf("(%s)", msg.Scope))
+		sb.WriteString("(")
+		sb.WriteString(msg.Scope)
+		sb.WriteString(")")
 	}
-
-	// Add breaking change marker
 	if msg.Breaking {
-		parts = append(parts, "!")
+		sb.WriteString("!")
 	}
-
-	// Add subject
-	commitMsg := fmt.Sprintf("%s: %s", strings.Join(parts, ""), msg.Subject)
+	sb.WriteString(": ")
+	sb.WriteString(msg.Subject)
 
 	// Add body if present
 	if msg.Body != "" {
-		commitMsg += "\n\n" + msg.Body
+		sb.WriteString("\n\n")
+		sb.WriteString(msg.Body)
+	}
+
+	// Add breaking change marker if needed
+	if msg.Breaking {
+		sb.WriteString("\n\nBREAKING CHANGE: This commit introduces breaking changes")
 	}
 
 	// Add issue references
 	if len(msg.IssueRefs) > 0 {
-		commitMsg += "\n\nRefs: " + strings.Join(msg.IssueRefs, ", ")
+		sb.WriteString("\n\nRefs: ")
+		sb.WriteString(strings.Join(msg.IssueRefs, ", "))
 	}
 
 	// Add co-authors
-	if len(msg.CoAuthors) > 0 {
-		for _, author := range msg.CoAuthors {
-			commitMsg += fmt.Sprintf("\n\nCo-authored-by: %s", author)
-		}
+	for _, author := range msg.CoAuthors {
+		sb.WriteString("\n\nCo-authored-by: ")
+		sb.WriteString(author)
 	}
 
-	return commitMsg
+	return sb.String()
 }
