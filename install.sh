@@ -295,7 +295,7 @@ ensure_local_bin() {
 
 # Main installation flow
 # Check if YOLO is already installed and handle accordingly
-LATEST_VERSION="1.1.0" # This should be updated with each release
+LATEST_VERSION="1.0.0-beta.1" # This should be updated with each release
 CURRENT_VERSION=$(get_current_version)
 
 if [ "$CURRENT_VERSION" != "not_installed" ] && [ "$CURRENT_VERSION" != "unknown" ]; then

@@ -8,7 +8,7 @@ import (
 
 var (
 	// Version is the current version of YOLO CLI
-	Version = "1.1.0"
+	Version = "1.0.0-beta.1"
 
 	// GitCommit is the git commit hash, injected at build time
 	GitCommit = "unknown"
