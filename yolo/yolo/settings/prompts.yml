@@ -1,0 +1,66 @@
+# YOLO AI Prompts
+
+version: 1.0.0
+date: 2025-01-21
+
+prompts:
+  - name: create-epic
+    description: Create a new epic
+    template: |
+      Create a new epic following YOLO methodology:
+      - Title: 
+      - Description: 
+      - Success Metrics
+      - Timeline
+      - Related Features
+      - Status Indicators
+
+  - name: add-feature
+    description: Add a feature to an epic
+    template: |
+      Add a feature to epic :
+      - Feature Name: 
+      - Description
+      - Implementation Tasks
+      - Dependencies
+      - Status Updates
+
+  - name: create-task
+    description: Create implementation task
+    template: |
+      Create task for feature :
+      - Task Name: 
+      - Implementation Details
+      - Acceptance Criteria
+      - Dependencies
+      - Progress Tracking
+
+  - name: update-status
+    description: Update component status
+    template: |
+      Update status for :
+      - Current Status
+      - Progress Details
+      - Blockers/Issues
+      - Next Steps
+      - Related Updates
+
+  - name: document-decision
+    description: Record architectural decision
+    template: |
+      Document decision for :
+      - Context
+      - Considered Options
+      - Decision
+      - Consequences
+      - Related Components
+
+  - name: conventional-commit
+    description: Generate commit message
+    template: |
+      Create conventional commit for :
+      - Type (feat/fix/etc)
+      - Scope
+      - Description
+      - Breaking Changes
+      - Related Issues

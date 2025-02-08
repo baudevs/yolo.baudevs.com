@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Shortcuts Configuration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold mb-2">⌨️ YOLO Shortcuts</h1>
+            <p class="text-gray-400">Configure system-wide keyboard shortcuts for YOLO commands</p>
+        </header>
+
+        <main>
+            <!-- Shortcuts List -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Configured Shortcuts</h2>
+                    <button id="addShortcut" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center">
+                        <span class="mr-2">+</span> Add Shortcut
+                    </button>
+                </div>
+                <div id="shortcutsList" class="space-y-4">
+                    <!-- Shortcuts will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Add/Edit Shortcut Modal -->
+            <div id="shortcutModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+                <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                    <h3 class="text-xl font-semibold mb-4">Configure Shortcut</h3>
+                    <form id="shortcutForm">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Name</label>
+                            <input type="text" id="shortcutName" class="w-full bg-gray-700 rounded-lg px-4 py-2" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Keys</label>
+                            <div id="keysDisplay" class="bg-gray-700 rounded-lg px-4 py-2 mb-2 min-h-[2.5rem] flex items-center">
+                                Click to record...
+                            </div>
+                            <input type="hidden" id="shortcutKeys" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Command</label>
+                            <select id="shortcutCommand" class="w-full bg-gray-700 rounded-lg px-4 py-2" required>
+                                <option value="prompt">AI Prompt</option>
+                                <option value="graph">Show Graph</option>
+                                <option value="commit">Commit Changes</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Description</label>
+                            <textarea id="shortcutDescription" class="w-full bg-gray-700 rounded-lg px-4 py-2 h-24"></textarea>
+                        </div>
+                        <div class="flex justify-end space-x-4">
+                            <button type="button" id="cancelShortcut" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg">Cancel</button>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="fixed bottom-4 right-4 hidden">
+            <div class="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg"></div>
+        </div>
+    </div>
+    <script type="module" src="app.js"></script>
+</body>
+</html> 

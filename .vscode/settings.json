@@ -1,0 +1,27 @@
+{
+    "cSpell.words": [
+        "yolo",
+        "epics",
+        "features",
+        "tasks",
+        "gopkg",
+        "go.mod",
+        "go.sum",
+        "gitignore",
+        "markdownlint",
+        "semver",
+        "yaml",
+        "markdownlint",
+        "timeframes",
+        "status",
+        "success",
+        "criteria",
+        "notes",
+        "context",
+        "impact",
+        "description",
+        "files"
+    ],
+    "markdownlint.run": "onSave",
+    "markdownlint.focusMode": true
+}

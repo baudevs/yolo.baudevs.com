@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Build binaries
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh ${{ env.VERSION }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            release/*.zip
+            release/*.tar.gz
+          body: |
+            ## Installation
+            
+            ### macOS and Linux
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/baudevs/yolo-cli/main/scripts/install.sh | bash -s ${{ env.VERSION }}
+            ```
+            
+            ### Windows
+            Download the appropriate zip file for your architecture (amd64 or arm64) and extract it to a directory in your PATH.
+            
+            ## Changes
+            
+            <!-- Add release notes here --> 
